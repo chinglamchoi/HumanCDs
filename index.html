@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>A4 — Persuasive or Deceptive Visualization?</title>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+<!-- D3 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+
+<style>
+/* ─── RESET & BASE ─────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --cream:   #F5F0E8;
+  --ink:     #1A1412;
+  --warm:    #C8B89A;
+  --rust:    #B84B2E;
+  --teal:    #1E7A6E;
+  --gold:    #D4A017;
+  --fog:     #E8E2D8;
+  --muted:   #7A6E62;
+
+  --v1-primary: #1E7A6E;   /* teal — "rising floor" */
+  --v1-accent:  #A8D5CE;
+  --v2-primary: #B84B2E;   /* rust — "stagnating ceiling" */
+  --v2-accent:  #F2C0B0;
+
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body:    'DM Sans', sans-serif;
+  --font-mono:    'DM Mono', monospace;
+}
+html { scroll-behavior: smooth; }
+body {
+  background: var(--cream);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.7;
+  overflow-x: hidden;
+}
+
+/* ─── SCROLLBAR ─────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--cream); }
+::-webkit-scrollbar-thumb { background: var(--warm); border-radius: 3px; }
+
+/* ─── HERO / HEADER ─────────────────────────────────────────────── */
+.hero {
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 5rem 2rem 2rem;
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 40%, rgba(30,122,110,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 80% at 80% 70%, rgba(184,75,46,0.08) 0%, transparent 60%);
+}
+.hero-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.5rem;
+}
+.hero-author {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-bottom: 1.5rem;
+}
+.hero-author a { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+.hero-author a:hover { color: var(--ink); }
+.hero h1 {
+  font-family: var(--font-display);
+  font-size: clamp(2.2rem, 6vw, 5rem);
+  font-weight: 900;
+  line-height: 1.1;
+  max-width: 1100px;
+  margin: 0 auto 2rem;
+}
+.hero h1 em {
+  font-style: italic;
+  color: var(--muted);
+}
+.proposition-card {
+  background: white;
+  border: 1px solid var(--fog);
+  border-radius: 4px;
+  padding: 2rem 2.5rem;
+  max-width: 680px;
+  margin: 0 auto 3rem;
+  box-shadow: 0 4px 24px rgba(26,20,18,0.06);
+  text-align: left;
+  position: relative;
+}
+.proposition-card::before {
+  content: '"';
+  font-family: var(--font-display);
+  font-size: 6rem;
+  color: var(--fog);
+  position: absolute;
+  top: -1rem;
+  left: 1.5rem;
+  line-height: 1;
+}
+.proposition-card p {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.1rem;
+  color: var(--ink);
+  padding-top: 1.5rem;
+}
+.hero-povs {
+  display: flex;
+  gap: 1.25rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+.stance-card {
+  display: block;
+  width: 280px;
+  padding: 1.4rem 1.6rem;
+  border-radius: 8px;
+  text-decoration: none;
+  text-align: left;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.stance-card:hover { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(0,0,0,0.18); }
+.stance-card.v1 { background: var(--v1-primary); color: white; }
+.stance-card.v2 { background: var(--v2-primary); color: white; }
+.stance-card-label {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.75;
+  margin-bottom: 0.45rem;
+}
+.stance-card-title {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1.25;
+  margin-bottom: 0.6rem;
+}
+.stance-card-tldr {
+  font-size: 0.82rem;
+  line-height: 1.55;
+  opacity: 0.88;
+}
+
+/* ─── SECTION LAYOUT ─────────────────────────────────────────────── */
+.viz-section {
+  padding: 2.5rem 2rem 6rem;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.section-header {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1.5rem;
+  align-items: start;
+  margin-bottom: 3rem;
+  padding-bottom: 2rem;
+  border-bottom: 2px solid var(--fog);
+}
+.section-badge {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+.v1 .section-badge { background: var(--v1-primary); color: white; }
+.v2 .section-badge { background: var(--v2-primary); color: white; }
+
+.section-meta { }
+.section-meta h2 {
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 3vw, 2.2rem);
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 0.4rem;
+}
+.v1 .section-meta h2 { color: var(--v1-primary); }
+.v2 .section-meta h2 { color: var(--v2-primary); }
+.section-meta .stance {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ─── VIZ CONTAINER ─────────────────────────────────────────────── */
+.viz-container {
+  background: white;
+  border-radius: 6px;
+  border: 1px solid var(--fog);
+  padding: 2.5rem;
+  box-shadow: 0 4px 32px rgba(26,20,18,0.07);
+  margin-bottom: 2rem;
+  position: relative;
+}
+.viz-title {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 1.3;
+  margin-bottom: 0.4rem;
+}
+.v1 .viz-title { color: var(--v1-primary); }
+.v2 .viz-title { color: var(--v2-primary); }
+.viz-subtitle {
+  font-size: 0.88rem;
+  color: var(--muted);
+  margin-bottom: 1.5rem;
+  max-width: 600px;
+}
+.chart-area {
+  width: 100%;
+  min-height: 400px;
+  position: relative;
+}
+svg { width: 100%; overflow: visible; }
+
+/* Controls */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  align-items: center;
+}
+.ctrl-label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  margin-right: 0.3rem;
+}
+.ctrl-btn {
+  background: var(--fog);
+  border: 1px solid var(--warm);
+  border-radius: 3px;
+  padding: 0.3rem 0.8rem;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  color: var(--ink);
+}
+.ctrl-btn:hover { background: var(--warm); }
+.ctrl-btn.active.v1 { background: var(--v1-primary); color: white; border-color: var(--v1-primary); }
+.ctrl-btn.active.v2 { background: var(--v2-primary); color: white; border-color: var(--v2-primary); }
+
+/* Source */
+.viz-source {
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-top: 1rem;
+  font-family: var(--font-mono);
+}
+
+/* ─── TOOLTIP ────────────────────────────────────────────────────── */
+.tooltip {
+  position: fixed;
+  background: var(--ink);
+  color: white;
+  padding: 0.6rem 0.9rem;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 9999;
+  max-width: 220px;
+  line-height: 1.5;
+}
+.tooltip.visible { opacity: 1; }
+.tooltip strong { display: block; margin-bottom: 0.2rem; font-size: 0.85rem; }
+
+/* ─── ANNOTATIONS ────────────────────────────────────────────────── */
+.annotation-box {
+  background: rgba(255,255,255,0.92);
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  pointer-events: none;
+  max-width: 160px;
+}
+
+/* ─── DESIGN DECISIONS ──────────────────────────────────────────── */
+.decisions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-bottom: 3rem;
+}
+.decision-card {
+  background: white;
+  border: 1px solid var(--fog);
+  border-radius: 4px;
+  padding: 1.25rem 1.4rem;
+  position: relative;
+  overflow: hidden;
+}
+.decision-card::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 4px; height: 100%;
+}
+.v1 .decision-card::after { background: var(--v1-primary); }
+.v2 .decision-card::after { background: var(--v2-primary); }
+
+.decision-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+.decision-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+  line-height: 1.3;
+}
+.score-badge {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+  font-weight: 500;
+}
+.score-earnest  { background: #D4EDDA; color: #155724; }
+.score-neutral  { background: #FFF3CD; color: #856404; }
+.score-deceptive{ background: #F8D7DA; color: #721C24; }
+.score-label {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-bottom: 0.5rem;
+}
+.decision-card p { font-size: 0.83rem; color: #444; line-height: 1.55; }
+
+/* ─── DIVIDER ────────────────────────────────────────────────────── */
+.section-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--warm), transparent);
+  margin: 1rem auto;
+  max-width: 600px;
+}
+
+/* ─── REFLECTION ─────────────────────────────────────────────────── */
+.reflection-section {
+  background: var(--ink);
+  color: var(--cream);
+  padding: 6rem 2rem;
+}
+.reflection-inner {
+  max-width: 780px;
+  margin: 0 auto;
+}
+.reflection-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--warm);
+  margin-bottom: 1rem;
+}
+.reflection-inner h2 {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  font-weight: 700;
+  margin-bottom: 2rem;
+  line-height: 1.15;
+}
+.reflection-inner p {
+  color: #C8C0B4;
+  margin-bottom: 1.4rem;
+  font-size: 1rem;
+}
+.reflection-inner p strong {
+  color: var(--cream);
+  font-weight: 600;
+}
+
+/* ─── FOOTER ─────────────────────────────────────────────────────── */
+footer {
+  background: var(--ink);
+  border-top: 1px solid #2A2420;
+  padding: 2rem;
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-family: var(--font-mono);
+}
+
+/* ─── LEGEND ─────────────────────────────────────────────────────── */
+.legend { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem; }
+.legend-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: var(--muted); }
+.legend-swatch { width: 14px; height: 14px; border-radius: 2px; flex-shrink: 0; }
+.legend-line { width: 24px; height: 3px; border-radius: 2px; flex-shrink: 0; }
+
+/* ─── RESPONSIVE ─────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .section-header { grid-template-columns: 1fr; }
+  .section-badge { display: none; }
+  .viz-container { padding: 1.5rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOOLTIP -->
+<div class="tooltip" id="tooltip"></div>
+
+<!-- ═══════════════ HERO ═══════════════ -->
+<section class="hero">
+  <div>
+    <p class="hero-eyebrow">Assignment 4 · Persuasive or Deceptive Visualization · MIT 6.C85</p>
+    <p class="hero-author">Ching Lam Choi (<a href="mailto:chinglam@mit.edu">chinglam@mit.edu</a>)</p>
+    <h1>Is the World <em>Rising Together</em>,<br>or Simply <em>Leveling Off</em>?</h1>
+    <div class="proposition-card">
+      <p>Global development trends are compressing differences in quality of life between countries, leading to a homogenization toward a common denominator. But which direction is that common denominator moving?</p>
+    </div>
+    <div class="hero-povs">
+      <a href="#vis1" class="stance-card v1">
+        <div class="stance-card-label">Stance 1 · Optimistic</div>
+        <div class="stance-card-title">The Rising Floor</div>
+        <div class="stance-card-tldr">Countries once left behind are catching up fast. The narrowing gap reflects real improvements in health and living standards among the world's poorest nations: global progress is genuine.</div>
+      </a>
+      <a href="#vis2" class="stance-card v2">
+        <div class="stance-card-label">Stance 2 · Pessimistic</div>
+        <div class="stance-card-title">The Stagnating Ceiling</div>
+        <div class="stance-card-tldr">The gap narrows because leaders have stopped improving, not because others are surging ahead. Rich countries have plateaued: convergence masks a slowdown at the top, not a global rise.</div>
+      </a>
+    </div>
+  </div>
+
+</section>
+
+<!-- ═══════════════ VIS 1: RISING FLOOR ═══════════════ -->
+<section class="viz-section v1" id="vis1">
+  <div class="section-header">
+    <div class="section-badge">P1</div>
+    <div class="section-meta">
+      <div class="stance">Stance 1 · Optimistic</div>
+      <h2>The World is Lifting Its Weakest Members</h2>
+    </div>
+  </div>
+
+  <div class="viz-container">
+    <div class="viz-title">Life Expectancy: Countries Once Left Behind Have Gained the Most</div>
+    <div class="viz-subtitle">Each line shows one country's life expectancy at birth (average of male and female). Countries starting lowest in 1960 — historically poorest — show the steepest gains, converging toward the high-income ceiling.</div>
+
+    <div class="controls">
+      <span class="ctrl-label">Show group:</span>
+      <button class="ctrl-btn active v1" data-group="all" onclick="setV1Group('all',this)">All Countries</button>
+      <button class="ctrl-btn v1" data-group="bottom" onclick="setV1Group('bottom',this)">Lowest Life Expectancy in 1960</button>
+      <button class="ctrl-btn v1" data-group="top" onclick="setV1Group('top',this)">Highest Life Expectancy in 1960</button>
+    </div>
+
+    <div class="chart-area" id="chart1"></div>
+    <div class="legend" id="legend1">
+      <div class="legend-item"><div class="legend-line" style="background:var(--v1-primary)"></div>Lowest life expectancy in 1960 (greatest gainers)</div>
+      <div class="legend-item"><div class="legend-line" style="background:var(--warm)"></div>Other countries</div>
+      <div class="legend-item"><div class="legend-line" style="background:#CCC;height:1px"></div>Highest life expectancy in 1960 (already ahead)</div>
+    </div>
+    <p class="viz-source">Source: World Bank Human Development Indicators via vis-society/World-Bank-Data-by-Indicators. Indicator: Life expectancy at birth (avg. of male &amp; female). Data: 1960–2019.</p>
+  </div>
+
+  <!-- DECISIONS -->
+  <div class="decisions-grid">
+    <div class="decision-card">
+      <div class="decision-header">
+        <div class="decision-title">Highlighting the Bottom Quartile</div>
+        <div>
+          <div class="score-label">Score</div>
+          <div class="score-badge score-earnest">+1</div>
+        </div>
+      </div>
+      <p>The visualization prominently highlights nations that started in the bottom quartile of life expectancy in 1960. Their rapid improvement is real and documented, the framing is selective but not fabricated. By foregrounding these trajectories, the chart naturally leads the eye toward the most dramatic gains. The main alternative was to show all countries equally, which dilutes the "rising floor" narrative.</p>
+    </div>
+    <div class="decision-card">
+      <div class="decision-header">
+        <div class="decision-title">Y-axis Starting at 30 Years</div>
+        <div>
+          <div class="score-label">Score</div>
+          <div class="score-badge score-neutral">−0.5</div>
+        </div>
+      </div>
+      <p>The y-axis begins at 30 years rather than 0, which visually amplifies the apparent steepness of rising trends among poor countries. This makes the climb look more dramatic. It is a common convention for range-bounded data like life expectancy, so it doesn't feel obviously deceptive, but it does exaggerate the visual impression of change. A y-axis starting at 0 would compress the lines and weaken the narrative.</p>
+    </div>
+    <div class="decision-card">
+      <div class="decision-header">
+        <div class="decision-title">Slope-emphasizing Line Chart</div>
+        <div>
+          <div class="score-label">Score</div>
+          <div class="score-badge score-earnest">+1.5</div>
+        </div>
+      </div>
+      <p>A line chart encodes temporal trajectory as slope; steep upward lines are perceptually read as rapid improvement. This is a perceptually appropriate choice for the data type. It emphasizes rate-of-change naturally, which supports the "rising floor" story. A bar chart showing only endpoints would also work, but a line chart over time is more compelling and conventional for trend data.</p>
+    </div>
+    <div class="decision-card">
+      <div class="decision-header">
+        <div class="decision-title">Title Framing: "Caught Up Fastest"</div>
+        <div>
+          <div class="score-label">Score</div>
+          <div class="score-badge score-neutral">−0.5</div>
+        </div>
+      </div>
+      <p>"Caught up fastest" is a value-laden framing that interprets convergence as upward movement. It is not factually wrong — bottom-quartile countries did improve more in absolute and relative terms — but the phrase embeds a positive moral valence ("catching up" implies striving and succeeding). A neutral framing might say "showed the largest absolute gains," which is drier but equally accurate. The charged phrase nudges the reader toward a specific conclusion.</p>
+    </div>
+    <div class="decision-card">
+      <div class="decision-header">
+        <div class="decision-title">Shaded "Convergence Zone" Annotation</div>
+        <div>
+          <div class="score-label">Score</div>
+          <div class="score-badge score-earnest">+1</div>
+        </div>
+      </div>
+      <p>A shaded band highlights the region where countries' trajectories converge after 1990. This transparent annotation makes the convergence pattern legible for readers who might not otherwise notice it. It is drawn from the data and is technically accurate. The choice to annotate this specific region (rather than, say, early divergence) is selective, but the annotation itself is honest. It helps readers understand the chart's argument without fabricating anything.</p>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ═══════════════ VIS 2: STAGNATING CEILING ═══════════════ -->
+<section class="viz-section v2" id="vis2">
+  <div class="section-header">
+    <div class="section-badge">P2</div>
+    <div class="section-meta">
+      <div class="stance">Stance 2 · Pessimistic</div>
+      <h2>The Leaders Have Stopped Leading:<br>A Convergence of Limits</h2>
+    </div>
+  </div>
+
+  <div class="viz-container">
+    <div class="viz-title">The Ceiling is Closing In — Rich Countries' Progress is at a 60-Year Low</div>
+    <div class="viz-subtitle">Annual gains in life expectancy for high-income countries have slowed dramatically since the 1990s as they approach a biological ceiling. Low-income countries remain far behind. The gap narrows, but slowly.</div>
+
+    <div class="controls">
+      <span class="ctrl-label">View mode:</span>
+      <button class="ctrl-btn active v2" onclick="setV2Mode('rate',this)">Annual Gain (Rate)</button>
+      <button class="ctrl-btn v2" onclick="setV2Mode('level',this)">Absolute Level</button>
+      <button class="ctrl-btn v2" onclick="setV2Mode('gap',this)">Gap: Top vs Global Avg</button>
+    </div>
+
+    <div class="chart-area" id="chart2"></div>
+    <div class="legend" id="legend2">
+      <div class="legend-item"><div class="legend-line" style="background:var(--v2-primary)"></div>High-income countries (avg + individuals)</div>
+      <div class="legend-item"><div class="legend-line" style="background:var(--v2-accent);border:1px solid var(--v2-primary)"></div>Low-income country average (dashed)</div>
+    </div>
+    <p class="viz-source">Source: World Bank Human Development Indicators via vis-society/World-Bank-Data-by-Indicators. Indicator: Life expectancy at birth (avg. of male &amp; female). Data: 1960–2019.</p>
+  </div>
+
+  <!-- DECISIONS -->
+  <div class="decisions-grid">
+    <div class="decision-card">
+      <div class="decision-header">
+        <div class="decision-title">Showing Rate of Change, Not Levels</div>
+        <div>
+          <div class="score-label">Score</div>
+          <div class="score-badge score-deceptive">−1</div>
+        </div>
+      </div>
+      <p>The default view shows annual year-over-year improvement rates rather than absolute life expectancy levels. This is a strategic transformation: high-income countries appear to be doing very little (near-zero gains), while their absolute levels (already high) look impressive. The rate framing makes "no improvement from 82 to 83" look like failure, when in reality living to 82 is a profound achievement. This is misleading by omission of context, though users can switch to the absolute level view.</p>
+    </div>
+    <div class="decision-card">
+      <div class="decision-header">
+        <div class="decision-title">Y-axis Anchored at 0 for Rate Chart</div>
+        <div>
+          <div class="score-label">Score</div>
+          <div class="score-badge score-deceptive">−1.5</div>
+        </div>
+      </div>
+      <p>For the rate-of-change view, the y-axis starts at 0 years/year, making the gradual slowdown among top countries look like total stagnation when the line approaches the baseline. The difference between gaining 0.05 years/year vs 0.30 years/year is visually stark because both appear close to flat. In contrast, POV 1's y-axis starts at 30 to exaggerate slope; here we anchor at 0 for the opposite effect to flatten apparent progress.</p>
+    </div>
+    <div class="decision-card">
+      <div class="decision-header">
+        <div class="decision-title">Title Framing: "Flatlined"</div>
+        <div>
+          <div class="score-label">Score</div>
+          <div class="score-badge score-deceptive">−1.5</div>
+        </div>
+      </div>
+      <p>"Flatlined" is a medical metaphor that implies death or failure, it carries strong negative connotations far beyond what the data shows. The data shows slowing marginal improvement, not regression. This is a charged rhetorical choice that exploits connotation. "Plateaued" or "stabilized" would be neutral alternatives. The word "flatlined" is chosen precisely because it triggers an alarm response in readers, nudging them to see stagnation as alarming rather than expected.</p>
+    </div>
+    <div class="decision-card">
+      <div class="decision-header">
+        <div class="decision-title">Color: Red/Rust Palette for High Earners</div>
+        <div>
+          <div class="score-label">Score</div>
+          <div class="score-badge score-deceptive">−1</div>
+        </div>
+      </div>
+      <p>High-income country lines are rendered in a rust-red color, which carries negative connotations (danger, alarm, failure). In context, readers associate red with "bad." Coloring the stagnating group red and the overall average in pale pink amplifies the sense that the top is "failing." In reality there is nothing inherently alarming about these data: they could equally be colored in a neutral gray or blue. The color choice is an affective manipulation that guides emotional interpretation.</p>
+    </div>
+    <div class="decision-card">
+      <div class="decision-header">
+        <div class="decision-title">Gap Chart: Framing Convergence as Ceiling Collapse</div>
+        <div>
+          <div class="score-label">Score</div>
+          <div class="score-badge score-neutral">−0.5</div>
+        </div>
+      </div>
+      <p>The "Gap" mode shows the difference between top-quintile life expectancy and the global average over time. The gap does narrow, which is factually accurate. But the chart labels this shrinking gap as "ceiling descending toward average," borrowing the language of structural limits. This framing implies the top is falling toward the middle, when it is equally valid to describe the middle as rising toward the top. The gap is symmetric; the interpretation is not.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ REFLECTION ═══════════════ -->
+<section class="reflection-section" id="reflection">
+  <div class="reflection-inner">
+    <p class="reflection-eyebrow">Final Reflection · Design Process &amp; Ethics</p>
+    <h2>Between Persuasion and Deception</h2>
+
+    <p><strong>What was straightforward</strong> about this assignment was identifying the core statistical pattern — convergence in life expectancy is real and well-documented. The harder problem was that the same dataset and the same numbers genuinely support opposite interpretations. It is not wrong to say that countries historically at the bottom have experienced the most rapid improvements (therefore supporting POV 1) but neither is it incorrect to say that historical leaders have seen a stall in improvements (substantiating POV 2). Both perspectives on the convergent properties of human development can be well argued with appropriate framing and transformation of data.</p>
+
+    <p><strong>What surprised me</strong> was how much persuasive power lives in choices that are almost never flagged as "deceptive", e.g., the starting value of a y-axis, the choice to show rates vs. levels, which subgroup to highlight, what word to use in a title. In isolation, each decision seems defensible. Together, they can construct radically different emotional experiences of identical data. The most insidious deceptions aren't technical manipulations; they're rhetorical framings that feel obvious and natural.</p>
+
+    <p><strong>On the line between persuasion and deception:</strong> I now think the distinction is less about technique and more about <em>intent and transparency</em>. A truncated y-axis in a news infographic is deceptive if the reader has no way to detect it. The same truncated axis in a paper where you explain the choice is simply a design decision. Similarly, framing convergence as "rising floor" versus "stagnating ceiling" is both persuasion and, depending on context, potentially deceptive — the difference lies in whether the visualization provides enough context for readers to evaluate the framing themselves.</p>
+
+    <p><strong>Ethical visualization</strong>, to me, means: being transparent about your choices, acknowledging what you are choosing not to show, and not exploiting the reader's perceptual or emotional defaults against their interests. Persuasion within those bounds is not only acceptable — it may be unavoidable, since all visualization involves selection. Deception begins when those choices are deliberately hidden, or when they exploit cognitive shortcuts to lead the reader to conclusions the data does not actually support.</p>
+
+    <p><strong>Limitations of this analysis.</strong> Both visualizations use life expectancy at birth as their proxy for quality of life. This is a deliberate and defensible choice: life expectancy is the most widely used, internationally comparable summary of population health, and forms the health pillar of the UN Human Development Index. But it remains a partial measure. It captures how long people live, not how well. It is relatively insensitive to improvements in mental health, personal freedom, inequality, or subjective wellbeing. The World Bank dataset contains many indicators that life expectancy alone cannot capture: education outcomes (school enrollment, literacy rates, primary completion), economic living standards (GDP per capita, poverty headcount at $3/day), labor and social development (children in employment, gender parity in schools, vulnerable employment rates), and health dimensions beyond mortality (maternal mortality, HIV prevalence, immunization coverage). Ideally, these visualizations would be extended to a composite, multidimensional index — analogous to the Human Development Index — that aggregates across health, education, and income simultaneously. Such an approach would allow both the "rising floor" and "stagnating ceiling" narratives to be tested against a richer conception of quality of life, and would reduce the risk of any single indicator telling a selective story.</p>
+  </div>
+</section>
+
+<footer>
+  Assignment 4 · Persuasive or Deceptive Visualization · Dataset: World Bank Social Development Indicators, 1960–2019.
+</footer>
+
+
+<!-- ═══════════════ D3 SCRIPTS ═══════════════ -->
+<script>
+// ─────────────────────────────────────────────────────────────────
+// REAL DATA — World Bank Social Development Indicators (raw 2021)
+// Indicator: Life expectancy at birth (average of male + female)
+// 62 countries · 1960–2019
+// ─────────────────────────────────────────────────────────────────
+const COUNTRIES_RAW = [{"name":"Japan","displayName":"Japan","income":1,"start1960":67.725,"end2019":84.43,"values":[{"year":1960,"value":67.725},{"year":1961,"value":68.37},{"year":1962,"value":68.655},{"year":1963,"value":69.72},{"year":1964,"value":70.195},{"year":1965,"value":70.265},{"year":1966,"value":71.05},{"year":1967,"value":71.34},{"year":1968,"value":71.675},{"year":1969,"value":71.905},{"year":1970,"value":72.015},{"year":1971,"value":72.945},{"year":1972,"value":73.565},{"year":1973,"value":73.81},{"year":1974,"value":74.44},{"year":1975,"value":75.1},{"year":1976,"value":75.5},{"year":1977,"value":75.945},{"year":1978,"value":76.09},{"year":1979,"value":76.395},{"year":1980,"value":76.155},{"year":1981,"value":76.48},{"year":1982,"value":76.99},{"year":1983,"value":77.03},{"year":1984,"value":77.435},{"year":1985,"value":77.72},{"year":1986,"value":78.135},{"year":1987,"value":78.555},{"year":1988,"value":78.47},{"year":1989,"value":78.89},{"year":1990,"value":78.91},{"year":1991,"value":79.175},{"year":1992,"value":79.23},{"year":1993,"value":79.37},{"year":1994,"value":79.765},{"year":1995,"value":79.615},{"year":1996,"value":80.28},{"year":1997,"value":80.505},{"year":1998,"value":80.585},{"year":1999,"value":80.65},{"year":2000,"value":81.16},{"year":2001,"value":81.5},{"year":2002,"value":81.65},{"year":2003,"value":81.845},{"year":2004,"value":82.115},{"year":2005,"value":82.01},{"year":2006,"value":82.405},{"year":2007,"value":82.59},{"year":2008,"value":82.67},{"year":2009,"value":83.015},{"year":2010,"value":82.925},{"year":2011,"value":82.67},{"year":2012,"value":83.175},{"year":2013,"value":83.41},{"year":2014,"value":83.665},{"year":2015,"value":83.87},{"year":2016,"value":84.06},{"year":2017,"value":84.175},{"year":2018,"value":84.285},{"year":2019,"value":84.43}]},{"name":"Norway","displayName":"Norway","income":1,"start1960":73.605,"end2019":82.95,"values":[{"year":1960,"value":73.605},{"year":1961,"value":73.61},{"year":1962,"value":73.51},{"year":1963,"value":73.135},{"year":1964,"value":73.655},{"year":1965,"value":73.79},{"year":1966,"value":74.06},{"year":1967,"value":74.135},{"year":1968,"value":74.01},{"year":1969,"value":73.735},{"year":1970,"value":74.165},{"year":1971,"value":74.255},{"year":1972,"value":74.42},{"year":1973,"value":74.52},{"year":1974,"value":74.83},{"year":1975,"value":74.895},{"year":1976,"value":75.115},{"year":1977,"value":75.465},{"year":1978,"value":75.495},{"year":1979,"value":75.495},{"year":1980,"value":75.755},{"year":1981,"value":75.95},{"year":1982,"value":76.095},{"year":1983,"value":76.15},{"year":1984,"value":76.305},{"year":1985,"value":76.0},{"year":1986,"value":76.325},{"year":1987,"value":76.165},{"year":1988,"value":76.3},{"year":1989,"value":76.58},{"year":1990,"value":76.615},{"year":1991,"value":77.055},{"year":1992,"value":77.26},{"year":1993,"value":77.225},{"year":1994,"value":77.76},{"year":1995,"value":77.81},{"year":1996,"value":78.22},{"year":1997,"value":78.21},{"year":1998,"value":78.4},{"year":1999,"value":78.35},{"year":2000,"value":78.7},{"year":2001,"value":78.85},{"year":2002,"value":79.05},{"year":2003,"value":79.45},{"year":2004,"value":79.9},{"year":2005,"value":80.1},{"year":2006,"value":80.4},{"year":2007,"value":80.45},{"year":2008,"value":80.65},{"year":2009,"value":80.85},{"year":2010,"value":81.05},{"year":2011,"value":81.35},{"year":2012,"value":81.5},{"year":2013,"value":81.8},{"year":2014,"value":82.15},{"year":2015,"value":82.35},{"year":2016,"value":82.45},{"year":2017,"value":82.65},{"year":2018,"value":82.8},{"year":2019,"value":82.95}]},{"name":"Sweden","displayName":"Sweden","income":1,"start1960":73.05,"end2019":83.0,"values":[{"year":1960,"value":73.05},{"year":1961,"value":73.52},{"year":1962,"value":73.4},{"year":1963,"value":73.605},{"year":1964,"value":73.785},{"year":1965,"value":73.915},{"year":1966,"value":74.135},{"year":1967,"value":74.18},{"year":1968,"value":74.03},{"year":1969,"value":74.145},{"year":1970,"value":74.71},{"year":1971,"value":74.69},{"year":1972,"value":74.785},{"year":1973,"value":74.935},{"year":1974,"value":75.05},{"year":1975,"value":75.055},{"year":1976,"value":75.04},{"year":1977,"value":75.455},{"year":1978,"value":75.545},{"year":1979,"value":75.6},{"year":1980,"value":75.815},{"year":1981,"value":76.1},{"year":1982,"value":76.4},{"year":1983,"value":76.625},{"year":1984,"value":76.89},{"year":1985,"value":76.74},{"year":1986,"value":77.005},{"year":1987,"value":77.165},{"year":1988,"value":77.05},{"year":1989,"value":77.8},{"year":1990,"value":77.605},{"year":1991,"value":77.735},{"year":1992,"value":78.065},{"year":1993,"value":78.125},{"year":1994,"value":78.715},{"year":1995,"value":78.805},{"year":1996,"value":79.02},{"year":1997,"value":79.26},{"year":1998,"value":79.4},{"year":1999,"value":79.5},{"year":2000,"value":79.7},{"year":2001,"value":79.85},{"year":2002,"value":79.9},{"year":2003,"value":80.15},{"year":2004,"value":80.55},{"year":2005,"value":80.6},{"year":2006,"value":80.8},{"year":2007,"value":80.95},{"year":2008,"value":81.15},{"year":2009,"value":81.4},{"year":2010,"value":81.5},{"year":2011,"value":81.85},{"year":2012,"value":81.75},{"year":2013,"value":82.0},{"year":2014,"value":82.3},{"year":2015,"value":82.25},{"year":2016,"value":82.35},{"year":2017,"value":82.45},{"year":2018,"value":82.6},{"year":2019,"value":83.0}]},{"name":"Australia","displayName":"Australia","income":1,"start1960":70.893,"end2019":82.95,"values":[{"year":1960,"value":70.893},{"year":1961,"value":71.05},{"year":1962,"value":71.02},{"year":1963,"value":70.99},{"year":1964,"value":70.96},{"year":1965,"value":70.93},{"year":1966,"value":70.9},{"year":1967,"value":70.95},{"year":1968,"value":71.0},{"year":1969,"value":71.05},{"year":1970,"value":71.1},{"year":1971,"value":71.15},{"year":1972,"value":71.54},{"year":1973,"value":71.93},{"year":1974,"value":72.32},{"year":1975,"value":72.71},{"year":1976,"value":73.1},{"year":1977,"value":73.43},{"year":1978,"value":73.76},{"year":1979,"value":74.09},{"year":1980,"value":74.42},{"year":1981,"value":74.75},{"year":1982,"value":74.99},{"year":1983,"value":75.23},{"year":1984,"value":75.47},{"year":1985,"value":75.71},{"year":1986,"value":75.95},{"year":1987,"value":76.23},{"year":1988,"value":76.51},{"year":1989,"value":76.79},{"year":1990,"value":77.07},{"year":1991,"value":77.35},{"year":1992,"value":77.45},{"year":1993,"value":77.95},{"year":1994,"value":77.95},{"year":1995,"value":77.9},{"year":1996,"value":78.15},{"year":1997,"value":78.55},{"year":1998,"value":78.7},{"year":1999,"value":79.0},{"year":2000,"value":79.3},{"year":2001,"value":79.7},{"year":2002,"value":80.0},{"year":2003,"value":80.3},{"year":2004,"value":80.55},{"year":2005,"value":80.9},{"year":2006,"value":81.1},{"year":2007,"value":81.35},{"year":2008,"value":81.45},{"year":2009,"value":81.6},{"year":2010,"value":81.75},{"year":2011,"value":81.95},{"year":2012,"value":82.1},{"year":2013,"value":82.2},{"year":2014,"value":82.35},{"year":2015,"value":82.45},{"year":2016,"value":82.5},{"year":2017,"value":82.55},{"year":2018,"value":82.8},{"year":2019,"value":82.95}]},{"name":"Canada","displayName":"Canada","income":1,"start1960":71.205,"end2019":82.1,"values":[{"year":1960,"value":71.205},{"year":1961,"value":71.42},{"year":1962,"value":71.44},{"year":1963,"value":71.455},{"year":1964,"value":71.855},{"year":1965,"value":71.95},{"year":1966,"value":72.085},{"year":1967,"value":72.29},{"year":1968,"value":72.435},{"year":1969,"value":72.585},{"year":1970,"value":72.785},{"year":1971,"value":73.115},{"year":1972,"value":73.02},{"year":1973,"value":73.25},{"year":1974,"value":73.325},{"year":1975,"value":73.61},{"year":1976,"value":73.945},{"year":1977,"value":74.305},{"year":1978,"value":74.62},{"year":1979,"value":74.955},{"year":1980,"value":75.165},{"year":1981,"value":75.55},{"year":1982,"value":75.85},{"year":1983,"value":76.15},{"year":1984,"value":76.3},{"year":1985,"value":76.45},{"year":1986,"value":76.6},{"year":1987,"value":76.8},{"year":1988,"value":77.0},{"year":1989,"value":77.2},{"year":1990,"value":77.5},{"year":1991,"value":77.7},{"year":1992,"value":77.8},{"year":1993,"value":77.9},{"year":1994,"value":77.9},{"year":1995,"value":78.1},{"year":1996,"value":78.25},{"year":1997,"value":78.5},{"year":1998,"value":78.7},{"year":1999,"value":78.95},{"year":2000,"value":79.2},{"year":2001,"value":79.4},{"year":2002,"value":79.55},{"year":2003,"value":79.8},{"year":2004,"value":79.95},{"year":2005,"value":80.25},{"year":2006,"value":80.4},{"year":2007,"value":80.6},{"year":2008,"value":80.75},{"year":2009,"value":81.05},{"year":2010,"value":81.3},{"year":2011,"value":81.5},{"year":2012,"value":81.7},{"year":2013,"value":81.8},{"year":2014,"value":81.85},{"year":2015,"value":81.95},{"year":2016,"value":81.95},{"year":2017,"value":81.95},{"year":2018,"value":82.1},{"year":2019,"value":82.1}]},{"name":"France","displayName":"France","income":1,"start1960":69.95,"end2019":82.65,"values":[{"year":1960,"value":69.95},{"year":1961,"value":70.2},{"year":1962,"value":70.4},{"year":1963,"value":70.6},{"year":1964,"value":70.75},{"year":1965,"value":70.9},{"year":1966,"value":71.05},{"year":1967,"value":71.25},{"year":1968,"value":71.4},{"year":1969,"value":71.55},{"year":1970,"value":71.75},{"year":1971,"value":72.0},{"year":1972,"value":72.2},{"year":1973,"value":72.45},{"year":1974,"value":72.7},{"year":1975,"value":72.95},{"year":1976,"value":73.2},{"year":1977,"value":73.45},{"year":1978,"value":73.7},{"year":1979,"value":73.95},{"year":1980,"value":74.15},{"year":1981,"value":74.4},{"year":1982,"value":74.6},{"year":1983,"value":74.9},{"year":1984,"value":75.1},{"year":1985,"value":75.4},{"year":1986,"value":75.7},{"year":1987,"value":75.9},{"year":1988,"value":76.2},{"year":1989,"value":76.45},{"year":1990,"value":76.7},{"year":1991,"value":76.95},{"year":1992,"value":77.2},{"year":1993,"value":77.4},{"year":1994,"value":77.75},{"year":1995,"value":77.85},{"year":1996,"value":78.05},{"year":1997,"value":78.4},{"year":1998,"value":78.7},{"year":1999,"value":78.85},{"year":2000,"value":79.15},{"year":2001,"value":79.25},{"year":2002,"value":79.35},{"year":2003,"value":79.2},{"year":2004,"value":80.25},{"year":2005,"value":80.25},{"year":2006,"value":80.9},{"year":2007,"value":81.2},{"year":2008,"value":81.3},{"year":2009,"value":81.5},{"year":2010,"value":81.75},{"year":2011,"value":82.2},{"year":2012,"value":82.05},{"year":2013,"value":82.3},{"year":2014,"value":82.8},{"year":2015,"value":82.4},{"year":2016,"value":82.65},{"year":2017,"value":82.65},{"year":2018,"value":82.8},{"year":2019,"value":82.65}]},{"name":"Germany","displayName":"Germany","income":1,"start1960":69.374,"end2019":81.0,"values":[{"year":1960,"value":69.374},{"year":1961,"value":69.573},{"year":1962,"value":69.757},{"year":1963,"value":69.927},{"year":1964,"value":70.082},{"year":1965,"value":70.221},{"year":1966,"value":70.341},{"year":1967,"value":70.445},{"year":1968,"value":70.536},{"year":1969,"value":70.623},{"year":1970,"value":70.713},{"year":1971,"value":70.817},{"year":1972,"value":70.942},{"year":1973,"value":71.093},{"year":1974,"value":71.272},{"year":1975,"value":71.479},{"year":1976,"value":71.712},{"year":1977,"value":71.962},{"year":1978,"value":72.222},{"year":1979,"value":72.487},{"year":1980,"value":72.757},{"year":1981,"value":73.029},{"year":1982,"value":73.306},{"year":1983,"value":73.584},{"year":1984,"value":73.862},{"year":1985,"value":74.133},{"year":1986,"value":74.392},{"year":1987,"value":74.638},{"year":1988,"value":74.871},{"year":1989,"value":75.092},{"year":1990,"value":75.307},{"year":1991,"value":75.4},{"year":1992,"value":75.9},{"year":1993,"value":75.95},{"year":1994,"value":76.35},{"year":1995,"value":76.5},{"year":1996,"value":76.75},{"year":1997,"value":77.15},{"year":1998,"value":77.55},{"year":1999,"value":77.8},{"year":2000,"value":78.0},{"year":2001,"value":78.4},{"year":2002,"value":78.3},{"year":2003,"value":78.45},{"year":2004,"value":78.75},{"year":2005,"value":79.0},{"year":2006,"value":79.2},{"year":2007,"value":79.6},{"year":2008,"value":79.8},{"year":2009,"value":79.9},{"year":2010,"value":80.05},{"year":2011,"value":80.5},{"year":2012,"value":80.6},{"year":2013,"value":80.55},{"year":2014,"value":81.15},{"year":2015,"value":80.7},{"year":2016,"value":81.05},{"year":2017,"value":81.05},{"year":2018,"value":80.95},{"year":2019,"value":81.0}]},{"name":"United Kingdom","displayName":"United Kingdom","income":1,"start1960":71.2,"end2019":81.25,"values":[{"year":1960,"value":71.2},{"year":1961,"value":70.95},{"year":1962,"value":71.0},{"year":1963,"value":70.9},{"year":1964,"value":71.7},{"year":1965,"value":71.7},{"year":1966,"value":71.65},{"year":1967,"value":72.2},{"year":1968,"value":71.8},{"year":1969,"value":71.8},{"year":1970,"value":72.05},{"year":1971,"value":72.35},{"year":1972,"value":72.2},{"year":1973,"value":72.4},{"year":1974,"value":72.6},{"year":1975,"value":72.8},{"year":1976,"value":72.85},{"year":1977,"value":73.3},{"year":1978,"value":73.25},{"year":1979,"value":73.35},{"year":1980,"value":73.75},{"year":1981,"value":74.1},{"year":1982,"value":74.25},{"year":1983,"value":74.45},{"year":1984,"value":74.85},{"year":1985,"value":74.7},{"year":1986,"value":75.0},{"year":1987,"value":75.35},{"year":1988,"value":75.45},{"year":1989,"value":75.65},{"year":1990,"value":75.95},{"year":1991,"value":76.15},{"year":1992,"value":76.5},{"year":1993,"value":76.45},{"year":1994,"value":76.95},{"year":1995,"value":76.9},{"year":1996,"value":77.15},{"year":1997,"value":77.275},{"year":1998,"value":77.25},{"year":1999,"value":77.45},{"year":2000,"value":77.8},{"year":2001,"value":78.05},{"year":2002,"value":78.2},{"year":2003,"value":78.5},{"year":2004,"value":78.8},{"year":2005,"value":79.1},{"year":2006,"value":79.3},{"year":2007,"value":79.5},{"year":2008,"value":79.65},{"year":2009,"value":80.1},{"year":2010,"value":80.45},{"year":2011,"value":81.0},{"year":2012,"value":80.95},{"year":2013,"value":81.05},{"year":2014,"value":81.35},{"year":2015,"value":81.0},{"year":2016,"value":81.2},{"year":2017,"value":81.3},{"year":2018,"value":81.3},{"year":2019,"value":81.25}]},{"name":"United States","displayName":"United States","income":1,"start1960":69.85,"end2019":78.85,"values":[{"year":1960,"value":69.85},{"year":1961,"value":70.35},{"year":1962,"value":70.2},{"year":1963,"value":70.0},{"year":1964,"value":70.25},{"year":1965,"value":70.3},{"year":1966,"value":70.3},{"year":1967,"value":70.65},{"year":1968,"value":70.05},{"year":1969,"value":70.6},{"year":1970,"value":70.9},{"year":1971,"value":71.2},{"year":1972,"value":71.25},{"year":1973,"value":71.45},{"year":1974,"value":72.05},{"year":1975,"value":72.7},{"year":1976,"value":72.95},{"year":1977,"value":73.35},{"year":1978,"value":73.45},{"year":1979,"value":73.9},{"year":1980,"value":73.7},{"year":1981,"value":74.1},{"year":1982,"value":74.45},{"year":1983,"value":74.55},{"year":1984,"value":74.65},{"year":1985,"value":74.65},{"year":1986,"value":74.7},{"year":1987,"value":74.85},{"year":1988,"value":74.85},{"year":1989,"value":75.1},{"year":1990,"value":75.3},{"year":1991,"value":75.45},{"year":1992,"value":75.7},{"year":1993,"value":75.5},{"year":1994,"value":75.7},{"year":1995,"value":75.7},{"year":1996,"value":76.1},{"year":1997,"value":76.5},{"year":1998,"value":76.65},{"year":1999,"value":76.65},{"year":2000,"value":76.7},{"year":2001,"value":76.9},{"year":2002,"value":77.0},{"year":2003,"value":77.1},{"year":2004,"value":77.55},{"year":2005,"value":77.55},{"year":2006,"value":77.75},{"year":2007,"value":78.05},{"year":2008,"value":78.1},{"year":2009,"value":78.45},{"year":2010,"value":78.6},{"year":2011,"value":78.7},{"year":2012,"value":78.8},{"year":2013,"value":78.8},{"year":2014,"value":78.9},{"year":2015,"value":78.75},{"year":2016,"value":78.6},{"year":2017,"value":78.6},{"year":2018,"value":78.7},{"year":2019,"value":78.85}]},{"name":"Switzerland","displayName":"Switzerland","income":1,"start1960":71.38,"end2019":83.75,"values":[{"year":1960,"value":71.38},{"year":1961,"value":71.715},{"year":1962,"value":71.265},{"year":1963,"value":71.26},{"year":1964,"value":72.15},{"year":1965,"value":72.27},{"year":1966,"value":72.405},{"year":1967,"value":72.71},{"year":1968,"value":72.66},{"year":1969,"value":72.685},{"year":1970,"value":73.095},{"year":1971,"value":73.205},{"year":1972,"value":73.72},{"year":1973,"value":74.015},{"year":1974,"value":74.365},{"year":1975,"value":74.745},{"year":1976,"value":74.865},{"year":1977,"value":75.32},{"year":1978,"value":75.27},{"year":1979,"value":75.545},{"year":1980,"value":75.54},{"year":1981,"value":75.775},{"year":1982,"value":76.115},{"year":1983,"value":76.115},{"year":1984,"value":76.69},{"year":1985,"value":76.815},{"year":1986,"value":76.98},{"year":1987,"value":77.28},{"year":1988,"value":77.31},{"year":1989,"value":77.505},{"year":1990,"value":77.325},{"year":1991,"value":77.6},{"year":1992,"value":77.89},{"year":1993,"value":78.165},{"year":1994,"value":78.43},{"year":1995,"value":78.495},{"year":1996,"value":78.97},{"year":1997,"value":79.15},{"year":1998,"value":79.4},{"year":1999,"value":79.65},{"year":2000,"value":79.75},{"year":2001,"value":80.25},{"year":2002,"value":80.45},{"year":2003,"value":80.6},{"year":2004,"value":81.15},{"year":2005,"value":81.3},{"year":2006,"value":81.55},{"year":2007,"value":81.8},{"year":2008,"value":82.05},{"year":2009,"value":82.1},{"year":2010,"value":82.3},{"year":2011,"value":82.75},{"year":2012,"value":82.75},{"year":2013,"value":82.85},{"year":2014,"value":83.25},{"year":2015,"value":82.95},{"year":2016,"value":83.65},{"year":2017,"value":83.6},{"year":2018,"value":83.8},{"year":2019,"value":83.75}]},{"name":"Netherlands","displayName":"Netherlands","income":1,"start1960":73.44,"end2019":82.05,"values":[{"year":1960,"value":73.44},{"year":1961,"value":73.705},{"year":1962,"value":73.38},{"year":1963,"value":73.395},{"year":1964,"value":73.765},{"year":1965,"value":73.63},{"year":1966,"value":73.575},{"year":1967,"value":73.87},{"year":1968,"value":73.68},{"year":1969,"value":73.605},{"year":1970,"value":73.655},{"year":1971,"value":73.88},{"year":1972,"value":73.8},{"year":1973,"value":74.215},{"year":1974,"value":74.61},{"year":1975,"value":74.575},{"year":1976,"value":74.725},{"year":1977,"value":75.3},{"year":1978,"value":75.225},{"year":1979,"value":75.685},{"year":1980,"value":75.825},{"year":1981,"value":76.015},{"year":1982,"value":76.07},{"year":1983,"value":76.245},{"year":1984,"value":76.315},{"year":1985,"value":76.365},{"year":1986,"value":76.35},{"year":1987,"value":76.785},{"year":1988,"value":76.97},{"year":1989,"value":76.81},{"year":1990,"value":76.955},{"year":1991,"value":77.075},{"year":1992,"value":77.29},{"year":1993,"value":76.99},{"year":1994,"value":77.445},{"year":1995,"value":77.475},{"year":1996,"value":77.505},{"year":1997,"value":77.86},{"year":1998,"value":77.95},{"year":1999,"value":77.9},{"year":2000,"value":78.05},{"year":2001,"value":78.25},{"year":2002,"value":78.35},{"year":2003,"value":78.55},{"year":2004,"value":79.15},{"year":2005,"value":79.4},{"year":2006,"value":79.75},{"year":2007,"value":80.15},{"year":2008,"value":80.3},{"year":2009,"value":80.6},{"year":2010,"value":80.75},{"year":2011,"value":81.25},{"year":2012,"value":81.15},{"year":2013,"value":81.35},{"year":2014,"value":81.75},{"year":2015,"value":81.55},{"year":2016,"value":81.6},{"year":2017,"value":81.8},{"year":2018,"value":81.85},{"year":2019,"value":82.05}]},{"name":"Belgium","displayName":"Belgium","income":1,"start1960":69.775,"end2019":81.8,"values":[{"year":1960,"value":69.775},{"year":1961,"value":70.595},{"year":1962,"value":70.29},{"year":1963,"value":70.125},{"year":1964,"value":70.83},{"year":1965,"value":70.7},{"year":1966,"value":70.78},{"year":1967,"value":71.09},{"year":1968,"value":70.77},{"year":1969,"value":70.845},{"year":1970,"value":71.05},{"year":1971,"value":71.14},{"year":1972,"value":71.485},{"year":1973,"value":71.715},{"year":1974,"value":72.065},{"year":1975,"value":72.05},{"year":1976,"value":72.2},{"year":1977,"value":72.855},{"year":1978,"value":72.78},{"year":1979,"value":73.275},{"year":1980,"value":73.29},{"year":1981,"value":73.705},{"year":1982,"value":73.97},{"year":1983,"value":73.95},{"year":1984,"value":74.49},{"year":1985,"value":74.605},{"year":1986,"value":74.815},{"year":1987,"value":75.45},{"year":1988,"value":75.65},{"year":1989,"value":75.715},{"year":1990,"value":76.135},{"year":1991,"value":76.275},{"year":1992,"value":76.435},{"year":1993,"value":76.43},{"year":1994,"value":76.775},{"year":1995,"value":76.925},{"year":1996,"value":77.27},{"year":1997,"value":77.45},{"year":1998,"value":77.55},{"year":1999,"value":77.7},{"year":2000,"value":77.8},{"year":2001,"value":78.05},{"year":2002,"value":78.15},{"year":2003,"value":78.2},{"year":2004,"value":78.95},{"year":2005,"value":79.05},{"year":2006,"value":79.45},{"year":2007,"value":79.85},{"year":2008,"value":79.75},{"year":2009,"value":80.1},{"year":2010,"value":80.25},{"year":2011,"value":80.65},{"year":2012,"value":80.45},{"year":2013,"value":80.65},{"year":2014,"value":81.35},{"year":2015,"value":81.05},{"year":2016,"value":81.5},{"year":2017,"value":81.55},{"year":2018,"value":81.65},{"year":2019,"value":81.8}]},{"name":"Denmark","displayName":"Denmark","income":1,"start1960":72.22,"end2019":81.25,"values":[{"year":1960,"value":72.22},{"year":1961,"value":72.485},{"year":1962,"value":72.37},{"year":1963,"value":72.45},{"year":1964,"value":72.54},{"year":1965,"value":72.425},{"year":1966,"value":72.5},{"year":1967,"value":72.98},{"year":1968,"value":73.18},{"year":1969,"value":73.28},{"year":1970,"value":73.405},{"year":1971,"value":73.48},{"year":1972,"value":73.505},{"year":1973,"value":73.75},{"year":1974,"value":73.88},{"year":1975,"value":74.145},{"year":1976,"value":73.81},{"year":1977,"value":74.705},{"year":1978,"value":74.465},{"year":1979,"value":74.295},{"year":1980,"value":74.175},{"year":1981,"value":74.305},{"year":1982,"value":74.625},{"year":1983,"value":74.495},{"year":1984,"value":74.635},{"year":1985,"value":74.5},{"year":1986,"value":74.65},{"year":1987,"value":74.765},{"year":1988,"value":74.84},{"year":1989,"value":74.87},{"year":1990,"value":74.875},{"year":1991,"value":75.225},{"year":1992,"value":75.26},{"year":1993,"value":75.18},{"year":1994,"value":75.44},{"year":1995,"value":75.275},{"year":1996,"value":75.655},{"year":1997,"value":76.005},{"year":1998,"value":76.2},{"year":1999,"value":76.4},{"year":2000,"value":76.65},{"year":2001,"value":76.85},{"year":2002,"value":76.95},{"year":2003,"value":77.2},{"year":2004,"value":77.55},{"year":2005,"value":77.9},{"year":2006,"value":78.15},{"year":2007,"value":78.25},{"year":2008,"value":78.5},{"year":2009,"value":78.65},{"year":2010,"value":79.15},{"year":2011,"value":79.85},{"year":2012,"value":80.1},{"year":2013,"value":80.35},{"year":2014,"value":80.75},{"year":2015,"value":80.75},{"year":2016,"value":80.9},{"year":2017,"value":81.15},{"year":2018,"value":81.0},{"year":2019,"value":81.25}]},{"name":"Finland","displayName":"Finland","income":1,"start1960":68.905,"end2019":81.85,"values":[{"year":1960,"value":68.905},{"year":1961,"value":68.925},{"year":1962,"value":68.665},{"year":1963,"value":69.1},{"year":1964,"value":69.31},{"year":1965,"value":69.07},{"year":1966,"value":69.565},{"year":1967,"value":69.76},{"year":1968,"value":69.71},{"year":1969,"value":69.6},{"year":1970,"value":70.28},{"year":1971,"value":70.12},{"year":1972,"value":70.81},{"year":1973,"value":71.33},{"year":1974,"value":71.24},{"year":1975,"value":71.78},{"year":1976,"value":71.92},{"year":1977,"value":72.46},{"year":1978,"value":73.005},{"year":1979,"value":73.26},{"year":1980,"value":73.545},{"year":1981,"value":73.85},{"year":1982,"value":74.4},{"year":1983,"value":74.3},{"year":1984,"value":74.62},{"year":1985,"value":74.325},{"year":1986,"value":74.66},{"year":1987,"value":74.69},{"year":1988,"value":74.675},{"year":1989,"value":74.89},{"year":1990,"value":74.91},{"year":1991,"value":75.325},{"year":1992,"value":75.55},{"year":1993,"value":75.795},{"year":1994,"value":76.485},{"year":1995,"value":76.5},{"year":1996,"value":76.785},{"year":1997,"value":76.965},{"year":1998,"value":77.18},{"year":1999,"value":77.38},{"year":2000,"value":77.55},{"year":2001,"value":78.05},{"year":2002,"value":78.2},{"year":2003,"value":78.45},{"year":2004,"value":78.8},{"year":2005,"value":78.9},{"year":2006,"value":79.3},{"year":2007,"value":79.35},{"year":2008,"value":79.65},{"year":2009,"value":79.8},{"year":2010,"value":79.95},{"year":2011,"value":80.55},{"year":2012,"value":80.7},{"year":2013,"value":81.05},{"year":2014,"value":81.25},{"year":2015,"value":81.55},{"year":2016,"value":81.5},{"year":2017,"value":81.7},{"year":2018,"value":81.8},{"year":2019,"value":81.85}]},{"name":"New Zealand","displayName":"New Zealand","income":1,"start1960":71.3,"end2019":81.75,"values":[{"year":1960,"value":71.3},{"year":1961,"value":71.05},{"year":1962,"value":71.3},{"year":1963,"value":71.35},{"year":1964,"value":71.4},{"year":1965,"value":71.3},{"year":1966,"value":71.2},{"year":1967,"value":71.55},{"year":1968,"value":71.2},{"year":1969,"value":71.55},{"year":1970,"value":71.35},{"year":1971,"value":71.85},{"year":1972,"value":71.9},{"year":1973,"value":71.75},{"year":1974,"value":72.0},{"year":1975,"value":72.3},{"year":1976,"value":72.5},{"year":1977,"value":72.25},{"year":1978,"value":73.1},{"year":1979,"value":73.15},{"year":1980,"value":72.9},{"year":1981,"value":73.7},{"year":1982,"value":73.8},{"year":1983,"value":73.85},{"year":1984,"value":74.45},{"year":1985,"value":73.9},{"year":1986,"value":74.2},{"year":1987,"value":74.25},{"year":1988,"value":74.5},{"year":1989,"value":74.9},{"year":1990,"value":75.45},{"year":1991,"value":76.1},{"year":1992,"value":76.2},{"year":1993,"value":76.5},{"year":1994,"value":76.95},{"year":1995,"value":76.8},{"year":1996,"value":76.85},{"year":1997,"value":77.4},{"year":1998,"value":78.15},{"year":1999,"value":77.95},{"year":2000,"value":78.7},{"year":2001,"value":78.75},{"year":2002,"value":78.9},{"year":2003,"value":79.2},{"year":2004,"value":79.6},{"year":2005,"value":79.9},{"year":2006,"value":80.1},{"year":2007,"value":80.2},{"year":2008,"value":80.4},{"year":2009,"value":80.75},{"year":2010,"value":80.75},{"year":2011,"value":80.95},{"year":2012,"value":81.2},{"year":2013,"value":81.45},{"year":2014,"value":81.45},{"year":2015,"value":81.5},{"year":2016,"value":81.655},{"year":2017,"value":81.7},{"year":2018,"value":81.9},{"year":2019,"value":81.75}]},{"name":"Italy","displayName":"Italy","income":1,"start1960":69.185,"end2019":83.25,"values":[{"year":1960,"value":69.185},{"year":1961,"value":69.825},{"year":1962,"value":69.215},{"year":1963,"value":69.315},{"year":1964,"value":70.38},{"year":1965,"value":70.24},{"year":1966,"value":70.995},{"year":1967,"value":71.025},{"year":1968,"value":70.85},{"year":1969,"value":70.885},{"year":1970,"value":71.63},{"year":1971,"value":71.88},{"year":1972,"value":72.15},{"year":1973,"value":72.1},{"year":1974,"value":72.81},{"year":1975,"value":72.725},{"year":1976,"value":73.07},{"year":1977,"value":73.445},{"year":1978,"value":73.775},{"year":1979,"value":74.085},{"year":1980,"value":74.025},{"year":1981,"value":74.435},{"year":1982,"value":74.895},{"year":1983,"value":74.72},{"year":1984,"value":75.47},{"year":1985,"value":75.55},{"year":1986,"value":75.85},{"year":1987,"value":76.3},{"year":1988,"value":76.45},{"year":1989,"value":76.9},{"year":1990,"value":77.05},{"year":1991,"value":77.1},{"year":1992,"value":77.5},{"year":1993,"value":77.8},{"year":1994,"value":78.0},{"year":1995,"value":78.25},{"year":1996,"value":78.6},{"year":1997,"value":78.9},{"year":1998,"value":79.05},{"year":1999,"value":79.5},{"year":2000,"value":79.85},{"year":2001,"value":80.2},{"year":2002,"value":80.3},{"year":2003,"value":80.05},{"year":2004,"value":80.85},{"year":2005,"value":80.85},{"year":2006,"value":81.35},{"year":2007,"value":81.5},{"year":2008,"value":81.55},{"year":2009,"value":81.7},{"year":2010,"value":82.1},{"year":2011,"value":82.25},{"year":2012,"value":82.3},{"year":2013,"value":82.75},{"year":2014,"value":83.15},{"year":2015,"value":82.6},{"year":2016,"value":83.3},{"year":2017,"value":83.0},{"year":2018,"value":83.4},{"year":2019,"value":83.25}]},{"name":"Spain","displayName":"Spain","income":1,"start1960":69.17,"end2019":83.55,"values":[{"year":1960,"value":69.17},{"year":1961,"value":69.54},{"year":1962,"value":69.58},{"year":1963,"value":69.745},{"year":1964,"value":70.465},{"year":1965,"value":70.875},{"year":1966,"value":71.12},{"year":1967,"value":71.32},{"year":1968,"value":71.605},{"year":1969,"value":71.125},{"year":1970,"value":72.095},{"year":1971,"value":71.7},{"year":1972,"value":72.885},{"year":1973,"value":72.68},{"year":1974,"value":73.04},{"year":1975,"value":73.39},{"year":1976,"value":73.715},{"year":1977,"value":74.205},{"year":1978,"value":74.37},{"year":1979,"value":74.895},{"year":1980,"value":75.425},{"year":1981,"value":75.605},{"year":1982,"value":76.21},{"year":1983,"value":75.985},{"year":1984,"value":76.375},{"year":1985,"value":76.34},{"year":1986,"value":76.59},{"year":1987,"value":76.81},{"year":1988,"value":76.83},{"year":1989,"value":76.9},{"year":1990,"value":76.925},{"year":1991,"value":77.06},{"year":1992,"value":77.5},{"year":1993,"value":77.635},{"year":1994,"value":77.99},{"year":1995,"value":78.07},{"year":1996,"value":78.21},{"year":1997,"value":78.69},{"year":1998,"value":78.75},{"year":1999,"value":78.8},{"year":2000,"value":79.05},{"year":2001,"value":79.45},{"year":2002,"value":79.65},{"year":2003,"value":79.7},{"year":2004,"value":79.95},{"year":2005,"value":80.25},{"year":2006,"value":80.9},{"year":2007,"value":80.95},{"year":2008,"value":81.25},{"year":2009,"value":81.55},{"year":2010,"value":81.7},{"year":2011,"value":82.55},{"year":2012,"value":82.5},{"year":2013,"value":83.15},{"year":2014,"value":83.3},{"year":2015,"value":82.9},{"year":2016,"value":83.4},{"year":2017,"value":83.35},{"year":2018,"value":83.5},{"year":2019,"value":83.55}]},{"name":"Portugal","displayName":"Portugal","income":1,"start1960":63.341,"end2019":80.75,"values":[{"year":1960,"value":63.341},{"year":1961,"value":63.756},{"year":1962,"value":64.166},{"year":1963,"value":64.569},{"year":1964,"value":64.965},{"year":1965,"value":65.355},{"year":1966,"value":65.739},{"year":1967,"value":66.122},{"year":1968,"value":66.505},{"year":1969,"value":66.891},{"year":1970,"value":67.15},{"year":1971,"value":66.85},{"year":1972,"value":68.4},{"year":1973,"value":67.6},{"year":1974,"value":68.1},{"year":1975,"value":68.4},{"year":1976,"value":68.95},{"year":1977,"value":70.1},{"year":1978,"value":70.4},{"year":1979,"value":71.25},{"year":1980,"value":71.3},{"year":1981,"value":71.7},{"year":1982,"value":72.5},{"year":1983,"value":72.35},{"year":1984,"value":72.6},{"year":1985,"value":72.9},{"year":1986,"value":73.35},{"year":1987,"value":73.75},{"year":1988,"value":73.8},{"year":1989,"value":74.35},{"year":1990,"value":74.05},{"year":1991,"value":74.1},{"year":1992,"value":74.4},{"year":1993,"value":74.6},{"year":1994,"value":75.0},{"year":1995,"value":75.4},{"year":1996,"value":75.35},{"year":1997,"value":75.5},{"year":1998,"value":75.8},{"year":1999,"value":76.05},{"year":2000,"value":76.4},{"year":2001,"value":76.9},{"year":2002,"value":77.15},{"year":2003,"value":77.3},{"year":2004,"value":77.75},{"year":2005,"value":78.15},{"year":2006,"value":78.5},{"year":2007,"value":78.4},{"year":2008,"value":78.6},{"year":2009,"value":78.8},{"year":2010,"value":79.1},{"year":2011,"value":80.55},{"year":2012,"value":80.45},{"year":2013,"value":80.8},{"year":2014,"value":81.2},{"year":2015,"value":81.2},{"year":2016,"value":81.2},{"year":2017,"value":81.5},{"year":2018,"value":81.4},{"year":2019,"value":80.75}]},{"name":"Greece","displayName":"Greece","income":1,"start1960":68.221,"end2019":82.0,"values":[{"year":1960,"value":68.221},{"year":1961,"value":68.606},{"year":1962,"value":68.95},{"year":1963,"value":69.243},{"year":1964,"value":69.488},{"year":1965,"value":69.697},{"year":1966,"value":69.898},{"year":1967,"value":70.114},{"year":1968,"value":70.365},{"year":1969,"value":70.653},{"year":1970,"value":70.968},{"year":1971,"value":71.291},{"year":1972,"value":71.6},{"year":1973,"value":71.88},{"year":1974,"value":72.131},{"year":1975,"value":72.361},{"year":1976,"value":72.588},{"year":1977,"value":72.832},{"year":1978,"value":73.103},{"year":1979,"value":73.403},{"year":1980,"value":73.722},{"year":1981,"value":74.046},{"year":1982,"value":74.357},{"year":1983,"value":74.645},{"year":1984,"value":74.909},{"year":1985,"value":75.159},{"year":1986,"value":75.409},{"year":1987,"value":75.676},{"year":1988,"value":75.967},{"year":1989,"value":76.75},{"year":1990,"value":77.0},{"year":1991,"value":77.2},{"year":1992,"value":77.45},{"year":1993,"value":77.45},{"year":1994,"value":77.7},{"year":1995,"value":77.65},{"year":1996,"value":77.75},{"year":1997,"value":78.2},{"year":1998,"value":77.9},{"year":1999,"value":78.05},{"year":2000,"value":77.95},{"year":2001,"value":78.45},{"year":2002,"value":78.7},{"year":2003,"value":78.9},{"year":2004,"value":79.1},{"year":2005,"value":79.3},{"year":2006,"value":79.5},{"year":2007,"value":79.5},{"year":2008,"value":80.0},{"year":2009,"value":80.25},{"year":2010,"value":80.45},{"year":2011,"value":80.8},{"year":2012,"value":80.7},{"year":2013,"value":81.35},{"year":2014,"value":81.45},{"year":2015,"value":81.1},{"year":2016,"value":81.45},{"year":2017,"value":81.35},{"year":2018,"value":81.85},{"year":2019,"value":82.0}]},{"name":"Austria","displayName":"Austria","income":1,"start1960":68.665,"end2019":81.85,"values":[{"year":1960,"value":68.665},{"year":1961,"value":69.655},{"year":1962,"value":69.385},{"year":1963,"value":69.52},{"year":1964,"value":70.0},{"year":1965,"value":69.8},{"year":1966,"value":70.125},{"year":1967,"value":70.0},{"year":1968,"value":70.14},{"year":1969,"value":69.915},{"year":1970,"value":70.0},{"year":1971,"value":70.2},{"year":1972,"value":70.55},{"year":1973,"value":71.1},{"year":1974,"value":71.1},{"year":1975,"value":71.2},{"year":1976,"value":71.65},{"year":1977,"value":72.0},{"year":1978,"value":72.1},{"year":1979,"value":72.4},{"year":1980,"value":72.55},{"year":1981,"value":72.9},{"year":1982,"value":73.05},{"year":1983,"value":73.1},{"year":1984,"value":73.7},{"year":1985,"value":73.9},{"year":1986,"value":74.4},{"year":1987,"value":74.85},{"year":1988,"value":75.3},{"year":1989,"value":75.35},{"year":1990,"value":75.65},{"year":1991,"value":75.7},{"year":1992,"value":75.9},{"year":1993,"value":76.15},{"year":1994,"value":76.5},{"year":1995,"value":76.75},{"year":1996,"value":76.95},{"year":1997,"value":77.4},{"year":1998,"value":77.75},{"year":1999,"value":77.95},{"year":2000,"value":78.2},{"year":2001,"value":78.65},{"year":2002,"value":78.75},{"year":2003,"value":78.7},{"year":2004,"value":79.25},{"year":2005,"value":79.4},{"year":2006,"value":79.95},{"year":2007,"value":80.25},{"year":2008,"value":80.5},{"year":2009,"value":80.4},{"year":2010,"value":80.65},{"year":2011,"value":81.05},{"year":2012,"value":81.0},{"year":2013,"value":81.2},{"year":2014,"value":81.55},{"year":2015,"value":81.25},{"year":2016,"value":81.7},{"year":2017,"value":81.7},{"year":2018,"value":81.75},{"year":2019,"value":81.85}]},{"name":"Korea, Rep.","displayName":"South Korea","income":1,"start1960":55.513,"end2019":83.3,"values":[{"year":1960,"value":55.513},{"year":1961,"value":56.112},{"year":1962,"value":56.608},{"year":1963,"value":57.066},{"year":1964,"value":57.535},{"year":1965,"value":58.062},{"year":1966,"value":58.668},{"year":1967,"value":59.333},{"year":1968,"value":60.035},{"year":1969,"value":60.765},{"year":1970,"value":62.25},{"year":1971,"value":62.7},{"year":1972,"value":63.1},{"year":1973,"value":63.5},{"year":1974,"value":63.9},{"year":1975,"value":64.25},{"year":1976,"value":64.6},{"year":1977,"value":65.0},{"year":1978,"value":65.3},{"year":1979,"value":65.65},{"year":1980,"value":66.15},{"year":1981,"value":66.65},{"year":1982,"value":67.2},{"year":1983,"value":67.65},{"year":1984,"value":68.3},{"year":1985,"value":68.9},{"year":1986,"value":69.55},{"year":1987,"value":70.1},{"year":1988,"value":70.65},{"year":1989,"value":71.15},{"year":1990,"value":71.7},{"year":1991,"value":72.15},{"year":1992,"value":72.6},{"year":1993,"value":73.1},{"year":1994,"value":73.5},{"year":1995,"value":73.8},{"year":1996,"value":74.25},{"year":1997,"value":74.7},{"year":1998,"value":75.1},{"year":1999,"value":75.5},{"year":2000,"value":76.0},{"year":2001,"value":76.5},{"year":2002,"value":76.85},{"year":2003,"value":77.3},{"year":2004,"value":77.75},{"year":2005,"value":78.25},{"year":2006,"value":78.75},{"year":2007,"value":79.2},{"year":2008,"value":79.6},{"year":2009,"value":80.05},{"year":2010,"value":80.2},{"year":2011,"value":80.65},{"year":2012,"value":80.9},{"year":2013,"value":81.35},{"year":2014,"value":81.8},{"year":2015,"value":82.1},{"year":2016,"value":82.35},{"year":2017,"value":82.7},{"year":2018,"value":82.7},{"year":2019,"value":83.3}]},{"name":"Singapore","displayName":"Singapore","income":1,"start1960":65.744,"end2019":83.55,"values":[{"year":1960,"value":65.744},{"year":1961,"value":66.171},{"year":1962,"value":66.514},{"year":1963,"value":66.782},{"year":1964,"value":66.99},{"year":1965,"value":67.166},{"year":1966,"value":67.335},{"year":1967,"value":67.525},{"year":1968,"value":67.754},{"year":1969,"value":68.032},{"year":1970,"value":68.361},{"year":1971,"value":68.733},{"year":1972,"value":69.125},{"year":1973,"value":69.522},{"year":1974,"value":69.915},{"year":1975,"value":70.299},{"year":1976,"value":70.671},{"year":1977,"value":71.036},{"year":1978,"value":71.397},{"year":1979,"value":71.755},{"year":1980,"value":72.25},{"year":1981,"value":72.65},{"year":1982,"value":72.75},{"year":1983,"value":73.1},{"year":1984,"value":73.35},{"year":1985,"value":73.95},{"year":1986,"value":74.3},{"year":1987,"value":74.6},{"year":1988,"value":74.75},{"year":1989,"value":75.0},{"year":1990,"value":75.35},{"year":1991,"value":75.7},{"year":1992,"value":76.0},{"year":1993,"value":76.1},{"year":1994,"value":76.25},{"year":1995,"value":76.35},{"year":1996,"value":76.65},{"year":1997,"value":76.95},{"year":1998,"value":77.35},{"year":1999,"value":77.6},{"year":2000,"value":78.0},{"year":2001,"value":78.3},{"year":2002,"value":78.6},{"year":2003,"value":79.1},{"year":2004,"value":79.55},{"year":2005,"value":80.05},{"year":2006,"value":80.2},{"year":2007,"value":80.5},{"year":2008,"value":80.85},{"year":2009,"value":81.3},{"year":2010,"value":81.6},{"year":2011,"value":81.8},{"year":2012,"value":82.05},{"year":2013,"value":82.3},{"year":2014,"value":82.55},{"year":2015,"value":82.8},{"year":2016,"value":82.9},{"year":2017,"value":83.15},{"year":2018,"value":83.35},{"year":2019,"value":83.55}]},{"name":"Ireland","displayName":"Ireland","income":1,"start1960":69.842,"end2019":82.35,"values":[{"year":1960,"value":69.842},{"year":1961,"value":70.025},{"year":1962,"value":70.182},{"year":1963,"value":70.322},{"year":1964,"value":70.452},{"year":1965,"value":70.575},{"year":1966,"value":70.691},{"year":1967,"value":70.799},{"year":1968,"value":70.899},{"year":1969,"value":70.995},{"year":1970,"value":71.09},{"year":1971,"value":71.188},{"year":1972,"value":71.293},{"year":1973,"value":71.407},{"year":1974,"value":71.535},{"year":1975,"value":71.68},{"year":1976,"value":71.847},{"year":1977,"value":72.035},{"year":1978,"value":72.24},{"year":1979,"value":72.46},{"year":1980,"value":72.691},{"year":1981,"value":72.924},{"year":1982,"value":73.157},{"year":1983,"value":73.383},{"year":1984,"value":73.601},{"year":1985,"value":73.812},{"year":1986,"value":74.021},{"year":1987,"value":74.232},{"year":1988,"value":74.447},{"year":1989,"value":74.665},{"year":1990,"value":74.878},{"year":1991,"value":75.074},{"year":1992,"value":75.249},{"year":1993,"value":75.404},{"year":1994,"value":75.545},{"year":1995,"value":75.686},{"year":1996,"value":75.9},{"year":1997,"value":76.05},{"year":1998,"value":76.25},{"year":1999,"value":76.15},{"year":2000,"value":76.6},{"year":2001,"value":77.2},{"year":2002,"value":77.7},{"year":2003,"value":78.2},{"year":2004,"value":78.6},{"year":2005,"value":79.0},{"year":2006,"value":79.3},{"year":2007,"value":79.7},{"year":2008,"value":80.15},{"year":2009,"value":80.25},{"year":2010,"value":80.8},{"year":2011,"value":80.8},{"year":2012,"value":80.9},{"year":2013,"value":81.0},{"year":2014,"value":81.4},{"year":2015,"value":81.5},{"year":2016,"value":81.7},{"year":2017,"value":82.2},{"year":2018,"value":82.3},{"year":2019,"value":82.35}]},{"name":"Israel","displayName":"Israel","income":1,"start1960":72.045,"end2019":82.85,"values":[{"year":1960,"value":72.045},{"year":1961,"value":72.045},{"year":1962,"value":72.15},{"year":1963,"value":72.192},{"year":1964,"value":72.235},{"year":1965,"value":72.278},{"year":1966,"value":72.32},{"year":1967,"value":71.55},{"year":1968,"value":71.1},{"year":1969,"value":71.015},{"year":1970,"value":71.255},{"year":1971,"value":71.76},{"year":1972,"value":71.1},{"year":1973,"value":71.73},{"year":1974,"value":71.7},{"year":1975,"value":72.09},{"year":1976,"value":73.0},{"year":1977,"value":73.0},{"year":1978,"value":73.25},{"year":1979,"value":73.55},{"year":1980,"value":73.92},{"year":1981,"value":74.3},{"year":1982,"value":74.15},{"year":1983,"value":74.5},{"year":1984,"value":74.85},{"year":1985,"value":75.25},{"year":1986,"value":75.0},{"year":1987,"value":75.3},{"year":1988,"value":74.45},{"year":1989,"value":76.35},{"year":1990,"value":76.65},{"year":1991,"value":76.8},{"year":1992,"value":76.55},{"year":1993,"value":77.2},{"year":1994,"value":77.45},{"year":1995,"value":77.5},{"year":1996,"value":78.15},{"year":1997,"value":78.05},{"year":1998,"value":78.2},{"year":1999,"value":78.7},{"year":2000,"value":79.0},{"year":2001,"value":79.45},{"year":2002,"value":79.5},{"year":2003,"value":79.7},{"year":2004,"value":80.2},{"year":2005,"value":80.2},{"year":2006,"value":80.6},{"year":2007,"value":80.55},{"year":2008,"value":81.0},{"year":2009,"value":81.45},{"year":2010,"value":81.65},{"year":2011,"value":81.7},{"year":2012,"value":81.75},{"year":2013,"value":82.1},{"year":2014,"value":82.2},{"year":2015,"value":82.1},{"year":2016,"value":82.45},{"year":2017,"value":82.6},{"year":2018,"value":82.85},{"year":2019,"value":82.85}]},{"name":"Czech Republic","displayName":"Czech Republic","income":1,"start1960":70.42,"end2019":79.2,"values":[{"year":1960,"value":70.42},{"year":1961,"value":70.585},{"year":1962,"value":69.86},{"year":1963,"value":70.38},{"year":1964,"value":70.535},{"year":1965,"value":70.24},{"year":1966,"value":70.465},{"year":1967,"value":70.345},{"year":1968,"value":69.925},{"year":1969,"value":69.455},{"year":1970,"value":69.525},{"year":1971,"value":69.765},{"year":1972,"value":70.26},{"year":1973,"value":70.11},{"year":1974,"value":70.17},{"year":1975,"value":70.5},{"year":1976,"value":70.62},{"year":1977,"value":70.66},{"year":1978,"value":70.73},{"year":1979,"value":70.835},{"year":1980,"value":70.365},{"year":1981,"value":70.81},{"year":1982,"value":70.895},{"year":1983,"value":70.68},{"year":1984,"value":70.925},{"year":1985,"value":71.135},{"year":1986,"value":71.085},{"year":1987,"value":71.535},{"year":1988,"value":71.73},{"year":1989,"value":71.765},{"year":1990,"value":71.48},{"year":1991,"value":71.99},{"year":1992,"value":72.365},{"year":1993,"value":72.855},{"year":1994,"value":73.06},{"year":1995,"value":73.16},{"year":1996,"value":73.8},{"year":1997,"value":73.91},{"year":1998,"value":74.6},{"year":1999,"value":74.75},{"year":2000,"value":75.05},{"year":2001,"value":75.25},{"year":2002,"value":75.3},{"year":2003,"value":75.25},{"year":2004,"value":75.8},{"year":2005,"value":76.0},{"year":2006,"value":76.6},{"year":2007,"value":76.8},{"year":2008,"value":77.05},{"year":2009,"value":77.15},{"year":2010,"value":77.5},{"year":2011,"value":77.95},{"year":2012,"value":78.15},{"year":2013,"value":78.25},{"year":2014,"value":78.9},{"year":2015,"value":78.65},{"year":2016,"value":79.1},{"year":2017,"value":79.05},{"year":2018,"value":79.1},{"year":2019,"value":79.2}]},{"name":"Brazil","displayName":"Brazil","income":2,"start1960":54.163,"end2019":75.899,"values":[{"year":1960,"value":54.163},{"year":1961,"value":54.657},{"year":1962,"value":55.157},{"year":1963,"value":55.658},{"year":1964,"value":56.156},{"year":1965,"value":56.65},{"year":1966,"value":57.135},{"year":1967,"value":57.611},{"year":1968,"value":58.076},{"year":1969,"value":58.531},{"year":1970,"value":58.969},{"year":1971,"value":59.392},{"year":1972,"value":59.8},{"year":1973,"value":60.194},{"year":1974,"value":60.576},{"year":1975,"value":60.946},{"year":1976,"value":61.307},{"year":1977,"value":61.66},{"year":1978,"value":62.01},{"year":1979,"value":62.356},{"year":1980,"value":62.705},{"year":1981,"value":63.056},{"year":1982,"value":63.41},{"year":1983,"value":63.768},{"year":1984,"value":64.132},{"year":1985,"value":64.502},{"year":1986,"value":64.88},{"year":1987,"value":65.264},{"year":1988,"value":65.654},{"year":1989,"value":66.048},{"year":1990,"value":66.445},{"year":1991,"value":66.843},{"year":1992,"value":67.242},{"year":1993,"value":67.639},{"year":1994,"value":68.033},{"year":1995,"value":68.419},{"year":1996,"value":68.796},{"year":1997,"value":69.162},{"year":1998,"value":69.519},{"year":1999,"value":69.868},{"year":2000,"value":70.212},{"year":2001,"value":70.555},{"year":2002,"value":70.903},{"year":2003,"value":71.255},{"year":2004,"value":71.611},{"year":2005,"value":71.971},{"year":2006,"value":72.329},{"year":2007,"value":72.681},{"year":2008,"value":73.023},{"year":2009,"value":73.35},{"year":2010,"value":73.664},{"year":2011,"value":73.962},{"year":2012,"value":74.245},{"year":2013,"value":74.516},{"year":2014,"value":74.775},{"year":2015,"value":75.022},{"year":2016,"value":75.256},{"year":2017,"value":75.48},{"year":2018,"value":75.693},{"year":2019,"value":75.899}]},{"name":"Mexico","displayName":"Mexico","income":2,"start1960":57.115,"end2019":75.041,"values":[{"year":1960,"value":57.115},{"year":1961,"value":57.706},{"year":1962,"value":58.23},{"year":1963,"value":58.694},{"year":1964,"value":59.106},{"year":1965,"value":59.485},{"year":1966,"value":59.845},{"year":1967,"value":60.204},{"year":1968,"value":60.576},{"year":1969,"value":60.974},{"year":1970,"value":61.407},{"year":1971,"value":61.877},{"year":1972,"value":62.379},{"year":1973,"value":62.901},{"year":1974,"value":63.441},{"year":1975,"value":63.99},{"year":1976,"value":64.541},{"year":1977,"value":65.088},{"year":1978,"value":65.624},{"year":1979,"value":66.143},{"year":1980,"value":66.642},{"year":1981,"value":67.119},{"year":1982,"value":67.578},{"year":1983,"value":68.023},{"year":1984,"value":68.453},{"year":1985,"value":68.874},{"year":1986,"value":69.286},{"year":1987,"value":69.695},{"year":1988,"value":70.1},{"year":1989,"value":70.499},{"year":1990,"value":70.891},{"year":1991,"value":71.267},{"year":1992,"value":71.626},{"year":1993,"value":71.965},{"year":1994,"value":72.287},{"year":1995,"value":72.603},{"year":1996,"value":72.928},{"year":1997,"value":73.267},{"year":1998,"value":73.621},{"year":1999,"value":73.983},{"year":2000,"value":74.334},{"year":2001,"value":74.65},{"year":2002,"value":74.911},{"year":2003,"value":75.106},{"year":2004,"value":75.231},{"year":2005,"value":75.287},{"year":2006,"value":75.284},{"year":2007,"value":75.243},{"year":2008,"value":75.184},{"year":2009,"value":75.119},{"year":2010,"value":75.057},{"year":2011,"value":75.004},{"year":2012,"value":74.959},{"year":2013,"value":74.924},{"year":2014,"value":74.901},{"year":2015,"value":74.895},{"year":2016,"value":74.908},{"year":2017,"value":74.936},{"year":2018,"value":74.981},{"year":2019,"value":75.041}]},{"name":"China","displayName":"China","income":2,"start1960":43.812,"end2019":77.002,"values":[{"year":1960,"value":43.812},{"year":1961,"value":44.132},{"year":1962,"value":44.858},{"year":1963,"value":46.041},{"year":1964,"value":47.655},{"year":1965,"value":49.607},{"year":1966,"value":51.749},{"year":1967,"value":53.894},{"year":1968,"value":55.885},{"year":1969,"value":57.639},{"year":1970,"value":59.115},{"year":1971,"value":60.326},{"year":1972,"value":61.362},{"year":1973,"value":62.295},{"year":1974,"value":63.145},{"year":1975,"value":63.924},{"year":1976,"value":64.64},{"year":1977,"value":65.288},{"year":1978,"value":65.87},{"year":1979,"value":66.393},{"year":1980,"value":66.863},{"year":1981,"value":67.282},{"year":1982,"value":67.654},{"year":1983,"value":67.978},{"year":1984,"value":68.263},{"year":1985,"value":68.509},{"year":1986,"value":68.713},{"year":1987,"value":68.878},{"year":1988,"value":69.011},{"year":1989,"value":69.122},{"year":1990,"value":69.225},{"year":1991,"value":69.334},{"year":1992,"value":69.459},{"year":1993,"value":69.609},{"year":1994,"value":69.791},{"year":1995,"value":70.01},{"year":1996,"value":70.266},{"year":1997,"value":70.55},{"year":1998,"value":70.855},{"year":1999,"value":71.174},{"year":2000,"value":71.5},{"year":2001,"value":71.828},{"year":2002,"value":72.151},{"year":2003,"value":72.467},{"year":2004,"value":72.774},{"year":2005,"value":73.071},{"year":2006,"value":73.361},{"year":2007,"value":73.648},{"year":2008,"value":73.936},{"year":2009,"value":74.226},{"year":2010,"value":74.521},{"year":2011,"value":74.823},{"year":2012,"value":75.13},{"year":2013,"value":75.439},{"year":2014,"value":75.744},{"year":2015,"value":76.041},{"year":2016,"value":76.317},{"year":2017,"value":76.572},{"year":2018,"value":76.8},{"year":2019,"value":77.002}]},{"name":"Turkey","displayName":"Turkey","income":2,"start1960":45.457,"end2019":77.644,"values":[{"year":1960,"value":45.457},{"year":1961,"value":46.176},{"year":1962,"value":46.907},{"year":1963,"value":47.643},{"year":1964,"value":48.374},{"year":1965,"value":49.09},{"year":1966,"value":49.782},{"year":1967,"value":50.449},{"year":1968,"value":51.094},{"year":1969,"value":51.718},{"year":1970,"value":52.329},{"year":1971,"value":52.933},{"year":1972,"value":53.545},{"year":1973,"value":54.168},{"year":1974,"value":54.806},{"year":1975,"value":55.46},{"year":1976,"value":56.126},{"year":1977,"value":56.796},{"year":1978,"value":57.464},{"year":1979,"value":58.125},{"year":1980,"value":58.774},{"year":1981,"value":59.41},{"year":1982,"value":60.032},{"year":1983,"value":60.639},{"year":1984,"value":61.23},{"year":1985,"value":61.801},{"year":1986,"value":62.349},{"year":1987,"value":62.874},{"year":1988,"value":63.382},{"year":1989,"value":63.879},{"year":1990,"value":64.371},{"year":1991,"value":64.874},{"year":1992,"value":65.392},{"year":1993,"value":65.931},{"year":1994,"value":66.493},{"year":1995,"value":67.077},{"year":1996,"value":67.681},{"year":1997,"value":68.294},{"year":1998,"value":68.906},{"year":1999,"value":69.507},{"year":2000,"value":70.087},{"year":2001,"value":70.633},{"year":2002,"value":71.144},{"year":2003,"value":71.62},{"year":2004,"value":72.061},{"year":2005,"value":72.477},{"year":2006,"value":72.878},{"year":2007,"value":73.278},{"year":2008,"value":73.683},{"year":2009,"value":74.097},{"year":2010,"value":74.519},{"year":2011,"value":74.944},{"year":2012,"value":75.361},{"year":2013,"value":75.762},{"year":2014,"value":76.142},{"year":2015,"value":76.496},{"year":2016,"value":76.821},{"year":2017,"value":77.118},{"year":2018,"value":77.392},{"year":2019,"value":77.644}]},{"name":"Thailand","displayName":"Thailand","income":2,"start1960":54.758,"end2019":77.18,"values":[{"year":1960,"value":54.758},{"year":1961,"value":55.291},{"year":1962,"value":55.803},{"year":1963,"value":56.29},{"year":1964,"value":56.752},{"year":1965,"value":57.193},{"year":1966,"value":57.624},{"year":1967,"value":58.056},{"year":1968,"value":58.502},{"year":1969,"value":58.964},{"year":1970,"value":59.447},{"year":1971,"value":59.951},{"year":1972,"value":60.469},{"year":1973,"value":60.998},{"year":1974,"value":61.529},{"year":1975,"value":62.057},{"year":1976,"value":62.57},{"year":1977,"value":63.064},{"year":1978,"value":63.544},{"year":1979,"value":64.02},{"year":1980,"value":64.519},{"year":1981,"value":65.081},{"year":1982,"value":65.721},{"year":1983,"value":66.435},{"year":1984,"value":67.203},{"year":1985,"value":67.98},{"year":1986,"value":68.703},{"year":1987,"value":69.321},{"year":1988,"value":69.799},{"year":1989,"value":70.124},{"year":1990,"value":70.304},{"year":1991,"value":70.363},{"year":1992,"value":70.352},{"year":1993,"value":70.319},{"year":1994,"value":70.292},{"year":1995,"value":70.289},{"year":1996,"value":70.319},{"year":1997,"value":70.375},{"year":1998,"value":70.456},{"year":1999,"value":70.569},{"year":2000,"value":70.724},{"year":2001,"value":70.925},{"year":2002,"value":71.175},{"year":2003,"value":71.468},{"year":2004,"value":71.798},{"year":2005,"value":72.165},{"year":2006,"value":72.559},{"year":2007,"value":72.973},{"year":2008,"value":73.397},{"year":2009,"value":73.82},{"year":2010,"value":74.237},{"year":2011,"value":74.645},{"year":2012,"value":75.043},{"year":2013,"value":75.428},{"year":2014,"value":75.796},{"year":2015,"value":76.138},{"year":2016,"value":76.446},{"year":2017,"value":76.722},{"year":2018,"value":76.966},{"year":2019,"value":77.18}]},{"name":"Colombia","displayName":"Colombia","income":2,"start1960":57.29,"end2019":77.274,"values":[{"year":1960,"value":57.29},{"year":1961,"value":57.831},{"year":1962,"value":58.346},{"year":1963,"value":58.84},{"year":1964,"value":59.322},{"year":1965,"value":59.796},{"year":1966,"value":60.27},{"year":1967,"value":60.742},{"year":1968,"value":61.214},{"year":1969,"value":61.688},{"year":1970,"value":62.166},{"year":1971,"value":62.644},{"year":1972,"value":63.121},{"year":1973,"value":63.594},{"year":1974,"value":64.064},{"year":1975,"value":64.534},{"year":1976,"value":65.01},{"year":1977,"value":65.493},{"year":1978,"value":65.982},{"year":1979,"value":66.469},{"year":1980,"value":66.947},{"year":1981,"value":67.404},{"year":1982,"value":67.829},{"year":1983,"value":68.216},{"year":1984,"value":68.562},{"year":1985,"value":68.861},{"year":1986,"value":69.108},{"year":1987,"value":69.312},{"year":1988,"value":69.488},{"year":1989,"value":69.645},{"year":1990,"value":69.808},{"year":1991,"value":69.994},{"year":1992,"value":70.218},{"year":1993,"value":70.485},{"year":1994,"value":70.797},{"year":1995,"value":71.148},{"year":1996,"value":71.525},{"year":1997,"value":71.905},{"year":1998,"value":72.275},{"year":1999,"value":72.623},{"year":2000,"value":72.944},{"year":2001,"value":73.237},{"year":2002,"value":73.511},{"year":2003,"value":73.77},{"year":2004,"value":74.018},{"year":2005,"value":74.257},{"year":2006,"value":74.492},{"year":2007,"value":74.723},{"year":2008,"value":74.953},{"year":2009,"value":75.183},{"year":2010,"value":75.413},{"year":2011,"value":75.643},{"year":2012,"value":75.87},{"year":2013,"value":76.091},{"year":2014,"value":76.307},{"year":2015,"value":76.516},{"year":2016,"value":76.716},{"year":2017,"value":76.909},{"year":2018,"value":77.094},{"year":2019,"value":77.274}]},{"name":"Peru","displayName":"Peru","income":2,"start1960":48.05,"end2019":76.784,"values":[{"year":1960,"value":48.05},{"year":1961,"value":48.666},{"year":1962,"value":49.262},{"year":1963,"value":49.83},{"year":1964,"value":50.373},{"year":1965,"value":50.91},{"year":1966,"value":51.471},{"year":1967,"value":52.077},{"year":1968,"value":52.74},{"year":1969,"value":53.458},{"year":1970,"value":54.21},{"year":1971,"value":54.97},{"year":1972,"value":55.705},{"year":1973,"value":56.393},{"year":1974,"value":57.026},{"year":1975,"value":57.608},{"year":1976,"value":58.147},{"year":1977,"value":58.668},{"year":1978,"value":59.191},{"year":1979,"value":59.722},{"year":1980,"value":60.269},{"year":1981,"value":60.833},{"year":1982,"value":61.406},{"year":1983,"value":61.985},{"year":1984,"value":62.57},{"year":1985,"value":63.159},{"year":1986,"value":63.757},{"year":1987,"value":64.362},{"year":1988,"value":64.97},{"year":1989,"value":65.578},{"year":1990,"value":66.178},{"year":1991,"value":66.765},{"year":1992,"value":67.334},{"year":1993,"value":67.881},{"year":1994,"value":68.403},{"year":1995,"value":68.899},{"year":1996,"value":69.373},{"year":1997,"value":69.828},{"year":1998,"value":70.267},{"year":1999,"value":70.691},{"year":2000,"value":71.102},{"year":2001,"value":71.497},{"year":2002,"value":71.874},{"year":2003,"value":72.235},{"year":2004,"value":72.581},{"year":2005,"value":72.911},{"year":2006,"value":73.23},{"year":2007,"value":73.538},{"year":2008,"value":73.841},{"year":2009,"value":74.136},{"year":2010,"value":74.428},{"year":2011,"value":74.716},{"year":2012,"value":75.001},{"year":2013,"value":75.279},{"year":2014,"value":75.553},{"year":2015,"value":75.819},{"year":2016,"value":76.075},{"year":2017,"value":76.322},{"year":2018,"value":76.557},{"year":2019,"value":76.784}]},{"name":"Iran, Islamic Rep.","displayName":"Iran","income":2,"start1960":44.927,"end2019":76.739,"values":[{"year":1960,"value":44.927},{"year":1961,"value":45.492},{"year":1962,"value":46.052},{"year":1963,"value":46.608},{"year":1964,"value":47.162},{"year":1965,"value":47.723},{"year":1966,"value":48.297},{"year":1967,"value":48.891},{"year":1968,"value":49.51},{"year":1969,"value":50.158},{"year":1970,"value":50.863},{"year":1971,"value":51.659},{"year":1972,"value":52.539},{"year":1973,"value":53.47},{"year":1974,"value":54.4},{"year":1975,"value":55.204},{"year":1976,"value":55.733},{"year":1977,"value":55.916},{"year":1978,"value":55.757},{"year":1979,"value":55.317},{"year":1980,"value":54.753},{"year":1981,"value":54.27},{"year":1982,"value":54.065},{"year":1983,"value":54.271},{"year":1984,"value":54.932},{"year":1985,"value":56.038},{"year":1986,"value":57.513},{"year":1987,"value":59.178},{"year":1988,"value":60.867},{"year":1989,"value":62.489},{"year":1990,"value":63.957},{"year":1991,"value":65.21},{"year":1992,"value":66.263},{"year":1993,"value":67.133},{"year":1994,"value":67.826},{"year":1995,"value":68.361},{"year":1996,"value":68.778},{"year":1997,"value":69.133},{"year":1998,"value":69.474},{"year":1999,"value":69.823},{"year":2000,"value":70.193},{"year":2001,"value":70.576},{"year":2002,"value":70.95},{"year":2003,"value":71.302},{"year":2004,"value":71.638},{"year":2005,"value":71.97},{"year":2006,"value":72.316},{"year":2007,"value":72.687},{"year":2008,"value":73.087},{"year":2009,"value":73.513},{"year":2010,"value":73.953},{"year":2011,"value":74.394},{"year":2012,"value":74.813},{"year":2013,"value":75.197},{"year":2014,"value":75.54},{"year":2015,"value":75.838},{"year":2016,"value":76.097},{"year":2017,"value":76.327},{"year":2018,"value":76.538},{"year":2019,"value":76.739}]},{"name":"Ecuador","displayName":"Ecuador","income":2,"start1960":52.993,"end2019":77.06,"values":[{"year":1960,"value":52.993},{"year":1961,"value":53.558},{"year":1962,"value":54.111},{"year":1963,"value":54.648},{"year":1964,"value":55.171},{"year":1965,"value":55.683},{"year":1966,"value":56.188},{"year":1967,"value":56.692},{"year":1968,"value":57.198},{"year":1969,"value":57.71},{"year":1970,"value":58.225},{"year":1971,"value":58.743},{"year":1972,"value":59.261},{"year":1973,"value":59.776},{"year":1974,"value":60.291},{"year":1975,"value":60.81},{"year":1976,"value":61.336},{"year":1977,"value":61.873},{"year":1978,"value":62.422},{"year":1979,"value":62.982},{"year":1980,"value":63.552},{"year":1981,"value":64.13},{"year":1982,"value":64.711},{"year":1983,"value":65.289},{"year":1984,"value":65.859},{"year":1985,"value":66.418},{"year":1986,"value":66.96},{"year":1987,"value":67.488},{"year":1988,"value":67.997},{"year":1989,"value":68.489},{"year":1990,"value":68.959},{"year":1991,"value":69.409},{"year":1992,"value":69.84},{"year":1993,"value":70.255},{"year":1994,"value":70.654},{"year":1995,"value":71.042},{"year":1996,"value":71.419},{"year":1997,"value":71.79},{"year":1998,"value":72.15},{"year":1999,"value":72.499},{"year":2000,"value":72.836},{"year":2001,"value":73.153},{"year":2002,"value":73.446},{"year":2003,"value":73.715},{"year":2004,"value":73.959},{"year":2005,"value":74.183},{"year":2006,"value":74.388},{"year":2007,"value":74.582},{"year":2008,"value":74.77},{"year":2009,"value":74.959},{"year":2010,"value":75.151},{"year":2011,"value":75.35},{"year":2012,"value":75.555},{"year":2013,"value":75.765},{"year":2014,"value":75.981},{"year":2015,"value":76.2},{"year":2016,"value":76.419},{"year":2017,"value":76.637},{"year":2018,"value":76.852},{"year":2019,"value":77.06}]},{"name":"Algeria","displayName":"Algeria","income":2,"start1960":46.153,"end2019":76.904,"values":[{"year":1960,"value":46.153},{"year":1961,"value":46.608},{"year":1962,"value":47.063},{"year":1963,"value":47.514},{"year":1964,"value":47.96},{"year":1965,"value":48.395},{"year":1966,"value":48.81},{"year":1967,"value":49.207},{"year":1968,"value":49.593},{"year":1969,"value":49.976},{"year":1970,"value":50.364},{"year":1971,"value":50.764},{"year":1972,"value":51.192},{"year":1973,"value":51.666},{"year":1974,"value":52.209},{"year":1975,"value":52.858},{"year":1976,"value":53.653},{"year":1977,"value":54.602},{"year":1978,"value":55.692},{"year":1979,"value":56.902},{"year":1980,"value":58.191},{"year":1981,"value":59.513},{"year":1982,"value":60.806},{"year":1983,"value":62.022},{"year":1984,"value":63.124},{"year":1985,"value":64.08},{"year":1986,"value":64.877},{"year":1987,"value":65.541},{"year":1988,"value":66.094},{"year":1989,"value":66.555},{"year":1990,"value":66.942},{"year":1991,"value":67.278},{"year":1992,"value":67.587},{"year":1993,"value":67.892},{"year":1994,"value":68.212},{"year":1995,"value":68.56},{"year":1996,"value":68.941},{"year":1997,"value":69.346},{"year":1998,"value":69.769},{"year":1999,"value":70.209},{"year":2000,"value":70.666},{"year":2001,"value":71.143},{"year":2002,"value":71.632},{"year":2003,"value":72.128},{"year":2004,"value":72.62},{"year":2005,"value":73.097},{"year":2006,"value":73.545},{"year":2007,"value":73.959},{"year":2008,"value":74.333},{"year":2009,"value":74.666},{"year":2010,"value":74.959},{"year":2011,"value":75.22},{"year":2012,"value":75.458},{"year":2013,"value":75.683},{"year":2014,"value":75.899},{"year":2015,"value":76.112},{"year":2016,"value":76.32},{"year":2017,"value":76.521},{"year":2018,"value":76.716},{"year":2019,"value":76.904}]},{"name":"Egypt, Arab Rep.","displayName":"Egypt","income":2,"start1960":48.044,"end2019":72.046,"values":[{"year":1960,"value":48.044},{"year":1961,"value":48.613},{"year":1962,"value":49.139},{"year":1963,"value":49.636},{"year":1964,"value":50.111},{"year":1965,"value":50.558},{"year":1966,"value":50.959},{"year":1967,"value":51.309},{"year":1968,"value":51.61},{"year":1969,"value":51.884},{"year":1970,"value":52.166},{"year":1971,"value":52.499},{"year":1972,"value":52.915},{"year":1973,"value":53.429},{"year":1974,"value":54.043},{"year":1975,"value":54.741},{"year":1976,"value":55.49},{"year":1977,"value":56.25},{"year":1978,"value":56.987},{"year":1979,"value":57.692},{"year":1980,"value":58.367},{"year":1981,"value":59.031},{"year":1982,"value":59.708},{"year":1983,"value":60.41},{"year":1984,"value":61.129},{"year":1985,"value":61.843},{"year":1986,"value":62.523},{"year":1987,"value":63.146},{"year":1988,"value":63.697},{"year":1989,"value":64.178},{"year":1990,"value":64.608},{"year":1991,"value":65.014},{"year":1992,"value":65.428},{"year":1993,"value":65.87},{"year":1994,"value":66.338},{"year":1995,"value":66.82},{"year":1996,"value":67.291},{"year":1997,"value":67.723},{"year":1998,"value":68.095},{"year":1999,"value":68.403},{"year":2000,"value":68.647},{"year":2001,"value":68.841},{"year":2002,"value":69.007},{"year":2003,"value":69.162},{"year":2004,"value":69.318},{"year":2005,"value":69.482},{"year":2006,"value":69.655},{"year":2007,"value":69.835},{"year":2008,"value":70.019},{"year":2009,"value":70.206},{"year":2010,"value":70.395},{"year":2011,"value":70.589},{"year":2012,"value":70.783},{"year":2013,"value":70.976},{"year":2014,"value":71.167},{"year":2015,"value":71.353},{"year":2016,"value":71.534},{"year":2017,"value":71.71},{"year":2018,"value":71.881},{"year":2019,"value":72.046}]},{"name":"Morocco","displayName":"Morocco","income":2,"start1960":48.479,"end2019":76.659,"values":[{"year":1960,"value":48.479},{"year":1961,"value":48.893},{"year":1962,"value":49.313},{"year":1963,"value":49.739},{"year":1964,"value":50.165},{"year":1965,"value":50.587},{"year":1966,"value":51.001},{"year":1967,"value":51.404},{"year":1968,"value":51.799},{"year":1969,"value":52.184},{"year":1970,"value":52.562},{"year":1971,"value":52.928},{"year":1972,"value":53.291},{"year":1973,"value":53.661},{"year":1974,"value":54.049},{"year":1975,"value":54.474},{"year":1976,"value":54.956},{"year":1977,"value":55.505},{"year":1978,"value":56.122},{"year":1979,"value":56.805},{"year":1980,"value":57.544},{"year":1981,"value":58.325},{"year":1982,"value":59.127},{"year":1983,"value":59.926},{"year":1984,"value":60.706},{"year":1985,"value":61.458},{"year":1986,"value":62.176},{"year":1987,"value":62.864},{"year":1988,"value":63.521},{"year":1989,"value":64.143},{"year":1990,"value":64.718},{"year":1991,"value":65.237},{"year":1992,"value":65.699},{"year":1993,"value":66.111},{"year":1994,"value":66.482},{"year":1995,"value":66.824},{"year":1996,"value":67.151},{"year":1997,"value":67.481},{"year":1998,"value":67.832},{"year":1999,"value":68.215},{"year":2000,"value":68.653},{"year":2001,"value":69.161},{"year":2002,"value":69.737},{"year":2003,"value":70.366},{"year":2004,"value":71.034},{"year":2005,"value":71.713},{"year":2006,"value":72.369},{"year":2007,"value":72.977},{"year":2008,"value":73.513},{"year":2009,"value":73.971},{"year":2010,"value":74.351},{"year":2011,"value":74.666},{"year":2012,"value":74.94},{"year":2013,"value":75.198},{"year":2014,"value":75.448},{"year":2015,"value":75.698},{"year":2016,"value":75.948},{"year":2017,"value":76.193},{"year":2018,"value":76.429},{"year":2019,"value":76.659}]},{"name":"India","displayName":"India","income":2,"start1960":41.398,"end2019":69.707,"values":[{"year":1960,"value":41.398},{"year":1961,"value":42.002},{"year":1962,"value":42.612},{"year":1963,"value":43.228},{"year":1964,"value":43.85},{"year":1965,"value":44.48},{"year":1966,"value":45.117},{"year":1967,"value":45.761},{"year":1968,"value":46.41},{"year":1969,"value":47.065},{"year":1970,"value":47.724},{"year":1971,"value":48.388},{"year":1972,"value":49.054},{"year":1973,"value":49.718},{"year":1974,"value":50.374},{"year":1975,"value":51.017},{"year":1976,"value":51.639},{"year":1977,"value":52.236},{"year":1978,"value":52.803},{"year":1979,"value":53.338},{"year":1980,"value":53.835},{"year":1981,"value":54.29},{"year":1982,"value":54.706},{"year":1983,"value":55.093},{"year":1984,"value":55.459},{"year":1985,"value":55.817},{"year":1986,"value":56.183},{"year":1987,"value":56.567},{"year":1988,"value":56.977},{"year":1989,"value":57.415},{"year":1990,"value":57.881},{"year":1991,"value":58.37},{"year":1992,"value":58.871},{"year":1993,"value":59.371},{"year":1994,"value":59.865},{"year":1995,"value":60.347},{"year":1996,"value":60.812},{"year":1997,"value":61.261},{"year":1998,"value":61.698},{"year":1999,"value":62.12},{"year":2000,"value":62.532},{"year":2001,"value":62.933},{"year":2002,"value":63.328},{"year":2003,"value":63.723},{"year":2004,"value":64.118},{"year":2005,"value":64.523},{"year":2006,"value":64.942},{"year":2007,"value":65.376},{"year":2008,"value":65.822},{"year":2009,"value":66.275},{"year":2010,"value":66.727},{"year":2011,"value":67.166},{"year":2012,"value":67.584},{"year":2013,"value":67.973},{"year":2014,"value":68.329},{"year":2015,"value":68.651},{"year":2016,"value":68.944},{"year":2017,"value":69.213},{"year":2018,"value":69.465},{"year":2019,"value":69.707}]},{"name":"Indonesia","displayName":"Indonesia","income":2,"start1960":46.742,"end2019":71.769,"values":[{"year":1960,"value":46.742},{"year":1961,"value":47.351},{"year":1962,"value":47.949},{"year":1963,"value":48.537},{"year":1964,"value":49.117},{"year":1965,"value":49.692},{"year":1966,"value":50.267},{"year":1967,"value":50.846},{"year":1968,"value":51.428},{"year":1969,"value":52.014},{"year":1970,"value":52.602},{"year":1971,"value":53.187},{"year":1972,"value":53.763},{"year":1973,"value":54.329},{"year":1974,"value":54.883},{"year":1975,"value":55.425},{"year":1976,"value":55.957},{"year":1977,"value":56.483},{"year":1978,"value":57.004},{"year":1979,"value":57.519},{"year":1980,"value":58.024},{"year":1981,"value":58.516},{"year":1982,"value":58.99},{"year":1983,"value":59.446},{"year":1984,"value":59.883},{"year":1985,"value":60.306},{"year":1986,"value":60.718},{"year":1987,"value":61.123},{"year":1988,"value":61.528},{"year":1989,"value":61.931},{"year":1990,"value":62.334},{"year":1991,"value":62.739},{"year":1992,"value":63.142},{"year":1993,"value":63.538},{"year":1994,"value":63.925},{"year":1995,"value":64.295},{"year":1996,"value":64.638},{"year":1997,"value":64.953},{"year":1998,"value":65.24},{"year":1999,"value":65.508},{"year":2000,"value":65.767},{"year":2001,"value":66.032},{"year":2002,"value":66.317},{"year":2003,"value":66.63},{"year":2004,"value":66.972},{"year":2005,"value":67.343},{"year":2006,"value":67.732},{"year":2007,"value":68.126},{"year":2008,"value":68.514},{"year":2009,"value":68.888},{"year":2010,"value":69.246},{"year":2011,"value":69.588},{"year":2012,"value":69.916},{"year":2013,"value":70.232},{"year":2014,"value":70.534},{"year":2015,"value":70.822},{"year":2016,"value":71.089},{"year":2017,"value":71.335},{"year":2018,"value":71.561},{"year":2019,"value":71.769}]},{"name":"Vietnam","displayName":"Vietnam","income":2,"start1960":59.153,"end2019":75.412,"values":[{"year":1960,"value":59.153},{"year":1961,"value":59.833},{"year":1962,"value":60.501},{"year":1963,"value":61.137},{"year":1964,"value":61.704},{"year":1965,"value":62.098},{"year":1966,"value":62.193},{"year":1967,"value":61.953},{"year":1968,"value":61.408},{"year":1969,"value":60.646},{"year":1970,"value":59.861},{"year":1971,"value":59.302},{"year":1972,"value":59.15},{"year":1973,"value":59.509},{"year":1974,"value":60.379},{"year":1975,"value":61.659},{"year":1976,"value":63.161},{"year":1977,"value":64.641},{"year":1978,"value":65.907},{"year":1979,"value":66.881},{"year":1980,"value":67.541},{"year":1981,"value":67.938},{"year":1982,"value":68.201},{"year":1983,"value":68.439},{"year":1984,"value":68.69},{"year":1985,"value":68.975},{"year":1986,"value":69.295},{"year":1987,"value":69.624},{"year":1988,"value":69.945},{"year":1989,"value":70.255},{"year":1990,"value":70.556},{"year":1991,"value":70.849},{"year":1992,"value":71.133},{"year":1993,"value":71.409},{"year":1994,"value":71.678},{"year":1995,"value":71.934},{"year":1996,"value":72.179},{"year":1997,"value":72.41},{"year":1998,"value":72.627},{"year":1999,"value":72.834},{"year":2000,"value":73.034},{"year":2001,"value":73.236},{"year":2002,"value":73.441},{"year":2003,"value":73.651},{"year":2004,"value":73.864},{"year":2005,"value":74.073},{"year":2006,"value":74.268},{"year":2007,"value":74.443},{"year":2008,"value":74.59},{"year":2009,"value":74.71},{"year":2010,"value":74.804},{"year":2011,"value":74.876},{"year":2012,"value":74.936},{"year":2013,"value":74.99},{"year":2014,"value":75.045},{"year":2015,"value":75.105},{"year":2016,"value":75.172},{"year":2017,"value":75.245},{"year":2018,"value":75.325},{"year":2019,"value":75.412}]},{"name":"Philippines","displayName":"Philippines","income":2,"start1960":61.092,"end2019":71.384,"values":[{"year":1960,"value":61.092},{"year":1961,"value":61.504},{"year":1962,"value":61.864},{"year":1963,"value":62.172},{"year":1964,"value":62.432},{"year":1965,"value":62.648},{"year":1966,"value":62.822},{"year":1967,"value":62.96},{"year":1968,"value":63.07},{"year":1969,"value":63.156},{"year":1970,"value":63.221},{"year":1971,"value":63.261},{"year":1972,"value":63.279},{"year":1973,"value":63.279},{"year":1974,"value":63.271},{"year":1975,"value":63.273},{"year":1976,"value":63.299},{"year":1977,"value":63.36},{"year":1978,"value":63.461},{"year":1979,"value":63.604},{"year":1980,"value":63.779},{"year":1981,"value":63.974},{"year":1982,"value":64.172},{"year":1983,"value":64.365},{"year":1984,"value":64.556},{"year":1985,"value":64.76},{"year":1986,"value":64.999},{"year":1987,"value":65.29},{"year":1988,"value":65.636},{"year":1989,"value":66.033},{"year":1990,"value":66.463},{"year":1991,"value":66.906},{"year":1992,"value":67.332},{"year":1993,"value":67.719},{"year":1994,"value":68.052},{"year":1995,"value":68.321},{"year":1996,"value":68.521},{"year":1997,"value":68.665},{"year":1998,"value":68.768},{"year":1999,"value":68.839},{"year":2000,"value":68.89},{"year":2001,"value":68.934},{"year":2002,"value":68.981},{"year":2003,"value":69.041},{"year":2004,"value":69.12},{"year":2005,"value":69.224},{"year":2006,"value":69.351},{"year":2007,"value":69.496},{"year":2008,"value":69.652},{"year":2009,"value":69.816},{"year":2010,"value":69.984},{"year":2011,"value":70.156},{"year":2012,"value":70.328},{"year":2013,"value":70.499},{"year":2014,"value":70.666},{"year":2015,"value":70.826},{"year":2016,"value":70.977},{"year":2017,"value":71.12},{"year":2018,"value":71.255},{"year":2019,"value":71.384}]},{"name":"Bolivia","displayName":"Bolivia","income":2,"start1960":41.825,"end2019":71.596,"values":[{"year":1960,"value":41.825},{"year":1961,"value":42.154},{"year":1962,"value":42.494},{"year":1963,"value":42.843},{"year":1964,"value":43.203},{"year":1965,"value":43.572},{"year":1966,"value":43.953},{"year":1967,"value":44.342},{"year":1968,"value":44.742},{"year":1969,"value":45.153},{"year":1970,"value":45.574},{"year":1971,"value":46.005},{"year":1972,"value":46.447},{"year":1973,"value":46.9},{"year":1974,"value":47.362},{"year":1975,"value":47.836},{"year":1976,"value":48.32},{"year":1977,"value":48.816},{"year":1978,"value":49.32},{"year":1979,"value":49.835},{"year":1980,"value":50.361},{"year":1981,"value":50.897},{"year":1982,"value":51.442},{"year":1983,"value":51.996},{"year":1984,"value":52.56},{"year":1985,"value":53.133},{"year":1986,"value":53.715},{"year":1987,"value":54.306},{"year":1988,"value":54.904},{"year":1989,"value":55.51},{"year":1990,"value":56.123},{"year":1991,"value":56.746},{"year":1992,"value":57.378},{"year":1993,"value":58.017},{"year":1994,"value":58.66},{"year":1995,"value":59.307},{"year":1996,"value":59.954},{"year":1997,"value":60.6},{"year":1998,"value":61.241},{"year":1999,"value":61.873},{"year":2000,"value":62.493},{"year":2001,"value":63.098},{"year":2002,"value":63.686},{"year":2003,"value":64.259},{"year":2004,"value":64.817},{"year":2005,"value":65.365},{"year":2006,"value":65.909},{"year":2007,"value":66.452},{"year":2008,"value":66.995},{"year":2009,"value":67.536},{"year":2010,"value":68.069},{"year":2011,"value":68.584},{"year":2012,"value":69.076},{"year":2013,"value":69.536},{"year":2014,"value":69.963},{"year":2015,"value":70.352},{"year":2016,"value":70.705},{"year":2017,"value":71.025},{"year":2018,"value":71.322},{"year":2019,"value":71.596}]},{"name":"Ghana","displayName":"Ghana","income":3,"start1960":45.839,"end2019":64.084,"values":[{"year":1960,"value":45.839},{"year":1961,"value":46.275},{"year":1962,"value":46.691},{"year":1963,"value":47.088},{"year":1964,"value":47.463},{"year":1965,"value":47.819},{"year":1966,"value":48.153},{"year":1967,"value":48.469},{"year":1968,"value":48.773},{"year":1969,"value":49.067},{"year":1970,"value":49.357},{"year":1971,"value":49.647},{"year":1972,"value":49.94},{"year":1973,"value":50.237},{"year":1974,"value":50.541},{"year":1975,"value":50.846},{"year":1976,"value":51.147},{"year":1977,"value":51.441},{"year":1978,"value":51.728},{"year":1979,"value":52.012},{"year":1980,"value":52.302},{"year":1981,"value":52.608},{"year":1982,"value":52.939},{"year":1983,"value":53.302},{"year":1984,"value":53.698},{"year":1985,"value":54.136},{"year":1986,"value":54.629},{"year":1987,"value":55.163},{"year":1988,"value":55.719},{"year":1989,"value":56.273},{"year":1990,"value":56.779},{"year":1991,"value":57.184},{"year":1992,"value":57.464},{"year":1993,"value":57.606},{"year":1994,"value":57.62},{"year":1995,"value":57.526},{"year":1996,"value":57.362},{"year":1997,"value":57.182},{"year":1998,"value":57.038},{"year":1999,"value":56.966},{"year":2000,"value":56.996},{"year":2001,"value":57.153},{"year":2002,"value":57.421},{"year":2003,"value":57.784},{"year":2004,"value":58.224},{"year":2005,"value":58.719},{"year":2006,"value":59.236},{"year":2007,"value":59.744},{"year":2008,"value":60.219},{"year":2009,"value":60.648},{"year":2010,"value":61.034},{"year":2011,"value":61.384},{"year":2012,"value":61.724},{"year":2013,"value":62.068},{"year":2014,"value":62.42},{"year":2015,"value":62.776},{"year":2016,"value":63.13},{"year":2017,"value":63.47},{"year":2018,"value":63.788},{"year":2019,"value":64.084}]},{"name":"Kenya","displayName":"Kenya","income":3,"start1960":46.826,"end2019":66.681,"values":[{"year":1960,"value":46.826},{"year":1961,"value":47.484},{"year":1962,"value":48.128},{"year":1963,"value":48.745},{"year":1964,"value":49.332},{"year":1965,"value":49.893},{"year":1966,"value":50.436},{"year":1967,"value":50.974},{"year":1968,"value":51.517},{"year":1969,"value":52.067},{"year":1970,"value":52.624},{"year":1971,"value":53.184},{"year":1972,"value":53.739},{"year":1973,"value":54.281},{"year":1974,"value":54.811},{"year":1975,"value":55.334},{"year":1976,"value":55.861},{"year":1977,"value":56.394},{"year":1978,"value":56.927},{"year":1979,"value":57.446},{"year":1980,"value":57.933},{"year":1981,"value":58.366},{"year":1982,"value":58.725},{"year":1983,"value":58.99},{"year":1984,"value":59.144},{"year":1985,"value":59.172},{"year":1986,"value":59.066},{"year":1987,"value":58.834},{"year":1988,"value":58.489},{"year":1989,"value":58.041},{"year":1990,"value":57.487},{"year":1991,"value":56.825},{"year":1992,"value":56.069},{"year":1993,"value":55.252},{"year":1994,"value":54.415},{"year":1995,"value":53.592},{"year":1996,"value":52.814},{"year":1997,"value":52.117},{"year":1998,"value":51.546},{"year":1999,"value":51.148},{"year":2000,"value":51.001},{"year":2001,"value":51.169},{"year":2002,"value":51.66},{"year":2003,"value":52.45},{"year":2004,"value":53.499},{"year":2005,"value":54.743},{"year":2006,"value":56.093},{"year":2007,"value":57.453},{"year":2008,"value":58.744},{"year":2009,"value":59.913},{"year":2010,"value":60.939},{"year":2011,"value":61.832},{"year":2012,"value":62.641},{"year":2013,"value":63.403},{"year":2014,"value":64.119},{"year":2015,"value":64.781},{"year":2016,"value":65.376},{"year":2017,"value":65.892},{"year":2018,"value":66.325},{"year":2019,"value":66.681}]},{"name":"Ethiopia","displayName":"Ethiopia","income":3,"start1960":38.441,"end2019":66.615,"values":[{"year":1960,"value":38.441},{"year":1961,"value":39.105},{"year":1962,"value":39.736},{"year":1963,"value":40.315},{"year":1964,"value":40.835},{"year":1965,"value":41.293},{"year":1966,"value":41.694},{"year":1967,"value":42.053},{"year":1968,"value":42.382},{"year":1969,"value":42.687},{"year":1970,"value":42.971},{"year":1971,"value":43.24},{"year":1972,"value":43.492},{"year":1973,"value":43.721},{"year":1974,"value":43.921},{"year":1975,"value":44.071},{"year":1976,"value":44.143},{"year":1977,"value":44.13},{"year":1978,"value":44.044},{"year":1979,"value":43.909},{"year":1980,"value":43.776},{"year":1981,"value":43.706},{"year":1982,"value":43.743},{"year":1983,"value":43.918},{"year":1984,"value":44.232},{"year":1985,"value":44.666},{"year":1986,"value":45.18},{"year":1987,"value":45.715},{"year":1988,"value":46.227},{"year":1989,"value":46.701},{"year":1990,"value":47.133},{"year":1991,"value":47.539},{"year":1992,"value":47.947},{"year":1993,"value":48.38},{"year":1994,"value":48.846},{"year":1995,"value":49.339},{"year":1996,"value":49.844},{"year":1997,"value":50.353},{"year":1998,"value":50.867},{"year":1999,"value":51.395},{"year":2000,"value":51.968},{"year":2001,"value":52.62},{"year":2002,"value":53.372},{"year":2003,"value":54.233},{"year":2004,"value":55.194},{"year":2005,"value":56.242},{"year":2006,"value":57.354},{"year":2007,"value":58.487},{"year":2008,"value":59.6},{"year":2009,"value":60.663},{"year":2010,"value":61.645},{"year":2011,"value":62.524},{"year":2012,"value":63.299},{"year":2013,"value":63.98},{"year":2014,"value":64.564},{"year":2015,"value":65.067},{"year":2016,"value":65.5},{"year":2017,"value":65.891},{"year":2018,"value":66.257},{"year":2019,"value":66.615}]},{"name":"Tanzania","displayName":"Tanzania","income":3,"start1960":43.599,"end2019":65.438,"values":[{"year":1960,"value":43.599},{"year":1961,"value":43.858},{"year":1962,"value":44.12},{"year":1963,"value":44.392},{"year":1964,"value":44.68},{"year":1965,"value":44.989},{"year":1966,"value":45.317},{"year":1967,"value":45.665},{"year":1968,"value":46.023},{"year":1969,"value":46.394},{"year":1970,"value":46.779},{"year":1971,"value":47.183},{"year":1972,"value":47.605},{"year":1973,"value":48.037},{"year":1974,"value":48.468},{"year":1975,"value":48.883},{"year":1976,"value":49.266},{"year":1977,"value":49.602},{"year":1978,"value":49.886},{"year":1979,"value":50.112},{"year":1980,"value":50.287},{"year":1981,"value":50.42},{"year":1982,"value":50.527},{"year":1983,"value":50.617},{"year":1984,"value":50.689},{"year":1985,"value":50.734},{"year":1986,"value":50.736},{"year":1987,"value":50.686},{"year":1988,"value":50.579},{"year":1989,"value":50.426},{"year":1990,"value":50.232},{"year":1991,"value":50.007},{"year":1992,"value":49.775},{"year":1993,"value":49.562},{"year":1994,"value":49.4},{"year":1995,"value":49.322},{"year":1996,"value":49.362},{"year":1997,"value":49.534},{"year":1998,"value":49.838},{"year":1999,"value":50.273},{"year":2000,"value":50.822},{"year":2001,"value":51.459},{"year":2002,"value":52.15},{"year":2003,"value":52.867},{"year":2004,"value":53.594},{"year":2005,"value":54.334},{"year":2006,"value":55.099},{"year":2007,"value":55.904},{"year":2008,"value":56.757},{"year":2009,"value":57.648},{"year":2010,"value":58.573},{"year":2011,"value":59.519},{"year":2012,"value":60.468},{"year":2013,"value":61.397},{"year":2014,"value":62.285},{"year":2015,"value":63.105},{"year":2016,"value":63.832},{"year":2017,"value":64.464},{"year":2018,"value":64.997},{"year":2019,"value":65.438}]},{"name":"Uganda","displayName":"Uganda","income":3,"start1960":44.381,"end2019":63.311,"values":[{"year":1960,"value":44.381},{"year":1961,"value":44.977},{"year":1962,"value":45.579},{"year":1963,"value":46.183},{"year":1964,"value":46.776},{"year":1965,"value":47.341},{"year":1966,"value":47.859},{"year":1967,"value":48.319},{"year":1968,"value":48.709},{"year":1969,"value":49.026},{"year":1970,"value":49.273},{"year":1971,"value":49.451},{"year":1972,"value":49.578},{"year":1973,"value":49.669},{"year":1974,"value":49.734},{"year":1975,"value":49.787},{"year":1976,"value":49.842},{"year":1977,"value":49.9},{"year":1978,"value":49.954},{"year":1979,"value":49.998},{"year":1980,"value":50.011},{"year":1981,"value":49.968},{"year":1982,"value":49.849},{"year":1983,"value":49.643},{"year":1984,"value":49.346},{"year":1985,"value":48.951},{"year":1986,"value":48.458},{"year":1987,"value":47.889},{"year":1988,"value":47.277},{"year":1989,"value":46.65},{"year":1990,"value":46.037},{"year":1991,"value":45.455},{"year":1992,"value":44.932},{"year":1993,"value":44.496},{"year":1994,"value":44.184},{"year":1995,"value":44.039},{"year":1996,"value":44.099},{"year":1997,"value":44.369},{"year":1998,"value":44.841},{"year":1999,"value":45.502},{"year":2000,"value":46.332},{"year":2001,"value":47.297},{"year":2002,"value":48.352},{"year":2003,"value":49.449},{"year":2004,"value":50.559},{"year":2005,"value":51.662},{"year":2006,"value":52.754},{"year":2007,"value":53.845},{"year":2008,"value":54.933},{"year":2009,"value":56.002},{"year":2010,"value":57.037},{"year":2011,"value":58.024},{"year":2012,"value":58.953},{"year":2013,"value":59.817},{"year":2014,"value":60.606},{"year":2015,"value":61.31},{"year":2016,"value":61.924},{"year":2017,"value":62.455},{"year":2018,"value":62.914},{"year":2019,"value":63.311}]},{"name":"Mozambique","displayName":"Mozambique","income":3,"start1960":39.438,"end2019":60.727,"values":[{"year":1960,"value":39.438},{"year":1961,"value":39.879},{"year":1962,"value":40.237},{"year":1963,"value":40.508},{"year":1964,"value":40.699},{"year":1965,"value":40.823},{"year":1966,"value":40.906},{"year":1967,"value":40.977},{"year":1968,"value":41.062},{"year":1969,"value":41.18},{"year":1970,"value":41.344},{"year":1971,"value":41.566},{"year":1972,"value":41.834},{"year":1973,"value":42.132},{"year":1974,"value":42.447},{"year":1975,"value":42.752},{"year":1976,"value":43.022},{"year":1977,"value":43.234},{"year":1978,"value":43.384},{"year":1979,"value":43.471},{"year":1980,"value":43.508},{"year":1981,"value":43.516},{"year":1982,"value":43.523},{"year":1983,"value":43.558},{"year":1984,"value":43.637},{"year":1985,"value":43.773},{"year":1986,"value":43.973},{"year":1987,"value":44.227},{"year":1988,"value":44.525},{"year":1989,"value":44.861},{"year":1990,"value":45.222},{"year":1991,"value":45.597},{"year":1992,"value":45.975},{"year":1993,"value":46.347},{"year":1994,"value":46.709},{"year":1995,"value":47.062},{"year":1996,"value":47.415},{"year":1997,"value":47.776},{"year":1998,"value":48.15},{"year":1999,"value":48.531},{"year":2000,"value":48.907},{"year":2001,"value":49.256},{"year":2002,"value":49.569},{"year":2003,"value":49.847},{"year":2004,"value":50.1},{"year":2005,"value":50.343},{"year":2006,"value":50.596},{"year":2007,"value":50.888},{"year":2008,"value":51.243},{"year":2009,"value":51.688},{"year":2010,"value":52.255},{"year":2011,"value":52.982},{"year":2012,"value":53.863},{"year":2013,"value":54.872},{"year":2014,"value":55.974},{"year":2015,"value":57.108},{"year":2016,"value":58.201},{"year":2017,"value":59.192},{"year":2018,"value":60.04},{"year":2019,"value":60.727}]},{"name":"Mali","displayName":"Mali","income":3,"start1960":28.231,"end2019":59.307,"values":[{"year":1960,"value":28.231},{"year":1961,"value":28.379},{"year":1962,"value":28.569},{"year":1963,"value":28.818},{"year":1964,"value":29.133},{"year":1965,"value":29.524},{"year":1966,"value":29.993},{"year":1967,"value":30.527},{"year":1968,"value":31.116},{"year":1969,"value":31.748},{"year":1970,"value":32.415},{"year":1971,"value":33.103},{"year":1972,"value":33.806},{"year":1973,"value":34.516},{"year":1974,"value":35.227},{"year":1975,"value":35.942},{"year":1976,"value":36.664},{"year":1977,"value":37.403},{"year":1978,"value":38.156},{"year":1979,"value":38.92},{"year":1980,"value":39.685},{"year":1981,"value":40.441},{"year":1982,"value":41.175},{"year":1983,"value":41.879},{"year":1984,"value":42.544},{"year":1985,"value":43.17},{"year":1986,"value":43.758},{"year":1987,"value":44.316},{"year":1988,"value":44.84},{"year":1989,"value":45.326},{"year":1990,"value":45.749},{"year":1991,"value":46.079},{"year":1992,"value":46.308},{"year":1993,"value":46.448},{"year":1994,"value":46.522},{"year":1995,"value":46.575},{"year":1996,"value":46.659},{"year":1997,"value":46.823},{"year":1998,"value":47.102},{"year":1999,"value":47.514},{"year":2000,"value":48.069},{"year":2001,"value":48.758},{"year":2002,"value":49.541},{"year":2003,"value":50.373},{"year":2004,"value":51.224},{"year":2005,"value":52.056},{"year":2006,"value":52.837},{"year":2007,"value":53.55},{"year":2008,"value":54.189},{"year":2009,"value":54.751},{"year":2010,"value":55.245},{"year":2011,"value":55.695},{"year":2012,"value":56.13},{"year":2013,"value":56.573},{"year":2014,"value":57.032},{"year":2015,"value":57.506},{"year":2016,"value":57.985},{"year":2017,"value":58.452},{"year":2018,"value":58.893},{"year":2019,"value":59.307}]},{"name":"Niger","displayName":"Niger","income":3,"start1960":35.017,"end2019":62.451,"values":[{"year":1960,"value":35.017},{"year":1961,"value":35.107},{"year":1962,"value":35.191},{"year":1963,"value":35.268},{"year":1964,"value":35.34},{"year":1965,"value":35.408},{"year":1966,"value":35.475},{"year":1967,"value":35.547},{"year":1968,"value":35.632},{"year":1969,"value":35.733},{"year":1970,"value":35.856},{"year":1971,"value":36.004},{"year":1972,"value":36.175},{"year":1973,"value":36.375},{"year":1974,"value":36.606},{"year":1975,"value":36.879},{"year":1976,"value":37.202},{"year":1977,"value":37.578},{"year":1978,"value":38.001},{"year":1979,"value":38.463},{"year":1980,"value":38.95},{"year":1981,"value":39.441},{"year":1982,"value":39.92},{"year":1983,"value":40.379},{"year":1984,"value":40.817},{"year":1985,"value":41.235},{"year":1986,"value":41.647},{"year":1987,"value":42.07},{"year":1988,"value":42.52},{"year":1989,"value":43.004},{"year":1990,"value":43.526},{"year":1991,"value":44.09},{"year":1992,"value":44.69},{"year":1993,"value":45.319},{"year":1994,"value":45.969},{"year":1995,"value":46.633},{"year":1996,"value":47.302},{"year":1997,"value":47.967},{"year":1998,"value":48.627},{"year":1999,"value":49.281},{"year":2000,"value":49.934},{"year":2001,"value":50.592},{"year":2002,"value":51.266},{"year":2003,"value":51.962},{"year":2004,"value":52.681},{"year":2005,"value":53.425},{"year":2006,"value":54.197},{"year":2007,"value":54.986},{"year":2008,"value":55.784},{"year":2009,"value":56.579},{"year":2010,"value":57.358},{"year":2011,"value":58.108},{"year":2012,"value":58.819},{"year":2013,"value":59.486},{"year":2014,"value":60.101},{"year":2015,"value":60.663},{"year":2016,"value":61.169},{"year":2017,"value":61.63},{"year":2018,"value":62.056},{"year":2019,"value":62.451}]},{"name":"Chad","displayName":"Chad","income":3,"start1960":38.059,"end2019":54.252,"values":[{"year":1960,"value":38.059},{"year":1961,"value":38.313},{"year":1962,"value":38.565},{"year":1963,"value":38.819},{"year":1964,"value":39.079},{"year":1965,"value":39.362},{"year":1966,"value":39.679},{"year":1967,"value":40.04},{"year":1968,"value":40.445},{"year":1969,"value":40.886},{"year":1970,"value":41.35},{"year":1971,"value":41.817},{"year":1972,"value":42.267},{"year":1973,"value":42.683},{"year":1974,"value":43.058},{"year":1975,"value":43.394},{"year":1976,"value":43.694},{"year":1977,"value":43.974},{"year":1978,"value":44.246},{"year":1979,"value":44.517},{"year":1980,"value":44.788},{"year":1981,"value":45.067},{"year":1982,"value":45.349},{"year":1983,"value":45.63},{"year":1984,"value":45.904},{"year":1985,"value":46.163},{"year":1986,"value":46.398},{"year":1987,"value":46.603},{"year":1988,"value":46.775},{"year":1989,"value":46.913},{"year":1990,"value":47.023},{"year":1991,"value":47.112},{"year":1992,"value":47.192},{"year":1993,"value":47.272},{"year":1994,"value":47.352},{"year":1995,"value":47.433},{"year":1996,"value":47.506},{"year":1997,"value":47.567},{"year":1998,"value":47.618},{"year":1999,"value":47.665},{"year":2000,"value":47.72},{"year":2001,"value":47.796},{"year":2002,"value":47.906},{"year":2003,"value":48.063},{"year":2004,"value":48.274},{"year":2005,"value":48.553},{"year":2006,"value":48.91},{"year":2007,"value":49.339},{"year":2008,"value":49.824},{"year":2009,"value":50.352},{"year":2010,"value":50.896},{"year":2011,"value":51.432},{"year":2012,"value":51.936},{"year":2013,"value":52.395},{"year":2014,"value":52.799},{"year":2015,"value":53.148},{"year":2016,"value":53.448},{"year":2017,"value":53.724},{"year":2018,"value":53.989},{"year":2019,"value":54.252}]},{"name":"Sierra Leone","displayName":"Sierra Leone","income":3,"start1960":31.573,"end2019":54.674,"values":[{"year":1960,"value":31.573},{"year":1961,"value":31.931},{"year":1962,"value":32.308},{"year":1963,"value":32.709},{"year":1964,"value":33.138},{"year":1965,"value":33.593},{"year":1966,"value":34.075},{"year":1967,"value":34.575},{"year":1968,"value":35.082},{"year":1969,"value":35.593},{"year":1970,"value":36.1},{"year":1971,"value":36.602},{"year":1972,"value":37.096},{"year":1973,"value":37.575},{"year":1974,"value":38.036},{"year":1975,"value":38.472},{"year":1976,"value":38.885},{"year":1977,"value":39.273},{"year":1978,"value":39.627},{"year":1979,"value":39.94},{"year":1980,"value":40.198},{"year":1981,"value":40.389},{"year":1982,"value":40.508},{"year":1983,"value":40.549},{"year":1984,"value":40.51},{"year":1985,"value":40.379},{"year":1986,"value":40.148},{"year":1987,"value":39.829},{"year":1988,"value":39.441},{"year":1989,"value":39.012},{"year":1990,"value":38.566},{"year":1991,"value":38.125},{"year":1992,"value":37.721},{"year":1993,"value":37.387},{"year":1994,"value":37.16},{"year":1995,"value":37.083},{"year":1996,"value":37.194},{"year":1997,"value":37.493},{"year":1998,"value":37.975},{"year":1999,"value":38.629},{"year":2000,"value":39.433},{"year":2001,"value":40.361},{"year":2002,"value":41.365},{"year":2003,"value":42.407},{"year":2004,"value":43.455},{"year":2005,"value":44.489},{"year":2006,"value":45.503},{"year":2007,"value":46.504},{"year":2008,"value":47.491},{"year":2009,"value":48.45},{"year":2010,"value":49.362},{"year":2011,"value":50.214},{"year":2012,"value":50.998},{"year":2013,"value":51.71},{"year":2014,"value":52.35},{"year":2015,"value":52.919},{"year":2016,"value":53.422},{"year":2017,"value":53.873},{"year":2018,"value":54.287},{"year":2019,"value":54.674}]},{"name":"Burkina Faso","displayName":"Burkina Faso","income":3,"start1960":34.504,"end2019":61.516,"values":[{"year":1960,"value":34.504},{"year":1961,"value":34.965},{"year":1962,"value":35.432},{"year":1963,"value":35.906},{"year":1964,"value":36.385},{"year":1965,"value":36.864},{"year":1966,"value":37.336},{"year":1967,"value":37.795},{"year":1968,"value":38.244},{"year":1969,"value":38.685},{"year":1970,"value":39.125},{"year":1971,"value":39.567},{"year":1972,"value":40.024},{"year":1973,"value":40.51},{"year":1974,"value":41.036},{"year":1975,"value":41.636},{"year":1976,"value":42.343},{"year":1977,"value":43.16},{"year":1978,"value":44.069},{"year":1979,"value":45.043},{"year":1980,"value":46.027},{"year":1981,"value":46.958},{"year":1982,"value":47.779},{"year":1983,"value":48.45},{"year":1984,"value":48.953},{"year":1985,"value":49.279},{"year":1986,"value":49.445},{"year":1987,"value":49.499},{"year":1988,"value":49.49},{"year":1989,"value":49.447},{"year":1990,"value":49.393},{"year":1991,"value":49.344},{"year":1992,"value":49.307},{"year":1993,"value":49.29},{"year":1994,"value":49.309},{"year":1995,"value":49.373},{"year":1996,"value":49.485},{"year":1997,"value":49.641},{"year":1998,"value":49.841},{"year":1999,"value":50.094},{"year":2000,"value":50.415},{"year":2001,"value":50.818},{"year":2002,"value":51.308},{"year":2003,"value":51.882},{"year":2004,"value":52.529},{"year":2005,"value":53.238},{"year":2006,"value":53.993},{"year":2007,"value":54.772},{"year":2008,"value":55.551},{"year":2009,"value":56.309},{"year":2010,"value":57.029},{"year":2011,"value":57.694},{"year":2012,"value":58.307},{"year":2013,"value":58.87},{"year":2014,"value":59.385},{"year":2015,"value":59.854},{"year":2016,"value":60.29},{"year":2017,"value":60.706},{"year":2018,"value":61.112},{"year":2019,"value":61.516}]},{"name":"Bangladesh","displayName":"Bangladesh","income":3,"start1960":45.352,"end2019":72.736,"values":[{"year":1960,"value":45.352},{"year":1961,"value":45.944},{"year":1962,"value":46.531},{"year":1963,"value":47.1},{"year":1964,"value":47.623},{"year":1965,"value":48.025},{"year":1966,"value":48.211},{"year":1967,"value":48.151},{"year":1968,"value":47.865},{"year":1969,"value":47.409},{"year":1970,"value":46.92},{"year":1971,"value":46.568},{"year":1972,"value":46.486},{"year":1973,"value":46.754},{"year":1974,"value":47.379},{"year":1975,"value":48.298},{"year":1976,"value":49.388},{"year":1977,"value":50.486},{"year":1978,"value":51.462},{"year":1979,"value":52.267},{"year":1980,"value":52.892},{"year":1981,"value":53.368},{"year":1982,"value":53.787},{"year":1983,"value":54.218},{"year":1984,"value":54.686},{"year":1985,"value":55.204},{"year":1986,"value":55.766},{"year":1987,"value":56.355},{"year":1988,"value":56.957},{"year":1989,"value":57.572},{"year":1990,"value":58.215},{"year":1991,"value":58.898},{"year":1992,"value":59.628},{"year":1993,"value":60.4},{"year":1994,"value":61.204},{"year":1995,"value":62.019},{"year":1996,"value":62.816},{"year":1997,"value":63.573},{"year":1998,"value":64.273},{"year":1999,"value":64.907},{"year":2000,"value":65.477},{"year":2001,"value":65.991},{"year":2002,"value":66.471},{"year":2003,"value":66.932},{"year":2004,"value":67.383},{"year":2005,"value":67.832},{"year":2006,"value":68.279},{"year":2007,"value":68.72},{"year":2008,"value":69.151},{"year":2009,"value":69.572},{"year":2010,"value":69.976},{"year":2011,"value":70.358},{"year":2012,"value":70.716},{"year":2013,"value":71.048},{"year":2014,"value":71.357},{"year":2015,"value":71.647},{"year":2016,"value":71.923},{"year":2017,"value":72.194},{"year":2018,"value":72.464},{"year":2019,"value":72.736}]},{"name":"Pakistan","displayName":"Pakistan","income":3,"start1960":45.32,"end2019":67.312,"values":[{"year":1960,"value":45.32},{"year":1961,"value":46.221},{"year":1962,"value":47.085},{"year":1963,"value":47.91},{"year":1964,"value":48.698},{"year":1965,"value":49.448},{"year":1966,"value":50.163},{"year":1967,"value":50.841},{"year":1968,"value":51.485},{"year":1969,"value":52.097},{"year":1970,"value":52.675},{"year":1971,"value":53.218},{"year":1972,"value":53.727},{"year":1973,"value":54.201},{"year":1974,"value":54.647},{"year":1975,"value":55.067},{"year":1976,"value":55.465},{"year":1977,"value":55.845},{"year":1978,"value":56.212},{"year":1979,"value":56.57},{"year":1980,"value":56.922},{"year":1981,"value":57.27},{"year":1982,"value":57.613},{"year":1983,"value":57.951},{"year":1984,"value":58.284},{"year":1985,"value":58.611},{"year":1986,"value":58.934},{"year":1987,"value":59.252},{"year":1988,"value":59.562},{"year":1989,"value":59.867},{"year":1990,"value":60.164},{"year":1991,"value":60.454},{"year":1992,"value":60.737},{"year":1993,"value":61.015},{"year":1994,"value":61.287},{"year":1995,"value":61.556},{"year":1996,"value":61.822},{"year":1997,"value":62.087},{"year":1998,"value":62.35},{"year":1999,"value":62.612},{"year":2000,"value":62.868},{"year":2001,"value":63.114},{"year":2002,"value":63.347},{"year":2003,"value":63.569},{"year":2004,"value":63.782},{"year":2005,"value":63.996},{"year":2006,"value":64.221},{"year":2007,"value":64.463},{"year":2008,"value":64.727},{"year":2009,"value":65.008},{"year":2010,"value":65.302},{"year":2011,"value":65.599},{"year":2012,"value":65.886},{"year":2013,"value":66.153},{"year":2014,"value":66.395},{"year":2015,"value":66.614},{"year":2016,"value":66.807},{"year":2017,"value":66.984},{"year":2018,"value":67.151},{"year":2019,"value":67.312}]},{"name":"Nepal","displayName":"Nepal","income":3,"start1960":35.559,"end2019":70.733,"values":[{"year":1960,"value":35.559},{"year":1961,"value":35.915},{"year":1962,"value":36.331},{"year":1963,"value":36.8},{"year":1964,"value":37.316},{"year":1965,"value":37.871},{"year":1966,"value":38.454},{"year":1967,"value":39.053},{"year":1968,"value":39.656},{"year":1969,"value":40.256},{"year":1970,"value":40.846},{"year":1971,"value":41.421},{"year":1972,"value":41.988},{"year":1973,"value":42.551},{"year":1974,"value":43.113},{"year":1975,"value":43.679},{"year":1976,"value":44.254},{"year":1977,"value":44.843},{"year":1978,"value":45.451},{"year":1979,"value":46.081},{"year":1980,"value":46.733},{"year":1981,"value":47.407},{"year":1982,"value":48.099},{"year":1983,"value":48.809},{"year":1984,"value":49.534},{"year":1985,"value":50.279},{"year":1986,"value":51.05},{"year":1987,"value":51.846},{"year":1988,"value":52.666},{"year":1989,"value":53.505},{"year":1990,"value":54.358},{"year":1991,"value":55.217},{"year":1992,"value":56.075},{"year":1993,"value":56.922},{"year":1994,"value":57.752},{"year":1995,"value":58.561},{"year":1996,"value":59.345},{"year":1997,"value":60.108},{"year":1998,"value":60.849},{"year":1999,"value":61.566},{"year":2000,"value":62.255},{"year":2001,"value":62.915},{"year":2002,"value":63.545},{"year":2003,"value":64.145},{"year":2004,"value":64.718},{"year":2005,"value":65.262},{"year":2006,"value":65.781},{"year":2007,"value":66.279},{"year":2008,"value":66.755},{"year":2009,"value":67.213},{"year":2010,"value":67.651},{"year":2011,"value":68.069},{"year":2012,"value":68.464},{"year":2013,"value":68.837},{"year":2014,"value":69.189},{"year":2015,"value":69.523},{"year":2016,"value":69.841},{"year":2017,"value":70.148},{"year":2018,"value":70.445},{"year":2019,"value":70.733}]},{"name":"Haiti","displayName":"Haiti","income":3,"start1960":41.788,"end2019":64.007,"values":[{"year":1960,"value":41.788},{"year":1961,"value":42.21},{"year":1962,"value":42.621},{"year":1963,"value":43.031},{"year":1964,"value":43.445},{"year":1965,"value":43.867},{"year":1966,"value":44.296},{"year":1967,"value":44.727},{"year":1968,"value":45.158},{"year":1969,"value":45.595},{"year":1970,"value":46.047},{"year":1971,"value":46.526},{"year":1972,"value":47.035},{"year":1973,"value":47.574},{"year":1974,"value":48.133},{"year":1975,"value":48.698},{"year":1976,"value":49.246},{"year":1977,"value":49.761},{"year":1978,"value":50.228},{"year":1979,"value":50.647},{"year":1980,"value":51.02},{"year":1981,"value":51.358},{"year":1982,"value":51.677},{"year":1983,"value":51.995},{"year":1984,"value":52.317},{"year":1985,"value":52.645},{"year":1986,"value":52.977},{"year":1987,"value":53.31},{"year":1988,"value":53.636},{"year":1989,"value":53.957},{"year":1990,"value":54.273},{"year":1991,"value":54.588},{"year":1992,"value":54.903},{"year":1993,"value":55.218},{"year":1994,"value":55.532},{"year":1995,"value":55.838},{"year":1996,"value":56.129},{"year":1997,"value":56.401},{"year":1998,"value":56.657},{"year":1999,"value":56.898},{"year":2000,"value":57.138},{"year":2001,"value":57.389},{"year":2002,"value":57.662},{"year":2003,"value":57.963},{"year":2004,"value":58.296},{"year":2005,"value":58.654},{"year":2006,"value":59.03},{"year":2007,"value":59.409},{"year":2008,"value":59.783},{"year":2009,"value":60.15},{"year":2010,"value":60.513},{"year":2011,"value":60.883},{"year":2012,"value":61.264},{"year":2013,"value":61.663},{"year":2014,"value":62.074},{"year":2015,"value":62.491},{"year":2016,"value":62.902},{"year":2017,"value":63.296},{"year":2018,"value":63.666},{"year":2019,"value":64.007}]},{"name":"Cambodia","displayName":"Cambodia","income":3,"start1960":41.273,"end2019":69.724,"values":[{"year":1960,"value":41.273},{"year":1961,"value":41.399},{"year":1962,"value":41.559},{"year":1963,"value":41.745},{"year":1964,"value":41.929},{"year":1965,"value":42.12},{"year":1966,"value":42.335},{"year":1967,"value":42.523},{"year":1968,"value":42.59},{"year":1969,"value":42.415},{"year":1970,"value":41.627},{"year":1971,"value":39.794},{"year":1972,"value":36.822},{"year":1973,"value":32.881},{"year":1974,"value":28.33},{"year":1975,"value":23.959},{"year":1976,"value":20.732},{"year":1977,"value":19.34},{"year":1978,"value":20.137},{"year":1979,"value":23.099},{"year":1980,"value":27.804},{"year":1981,"value":33.511},{"year":1982,"value":39.233},{"year":1983,"value":44.175},{"year":1984,"value":47.978},{"year":1985,"value":50.492},{"year":1986,"value":51.846},{"year":1987,"value":52.526},{"year":1988,"value":52.952},{"year":1989,"value":53.266},{"year":1990,"value":53.567},{"year":1991,"value":53.894},{"year":1992,"value":54.207},{"year":1993,"value":54.498},{"year":1994,"value":54.806},{"year":1995,"value":55.177},{"year":1996,"value":55.641},{"year":1997,"value":56.198},{"year":1998,"value":56.846},{"year":1999,"value":57.583},{"year":2000,"value":58.405},{"year":2001,"value":59.302},{"year":2002,"value":60.242},{"year":2003,"value":61.193},{"year":2004,"value":62.129},{"year":2005,"value":63.025},{"year":2006,"value":63.859},{"year":2007,"value":64.623},{"year":2008,"value":65.316},{"year":2009,"value":65.933},{"year":2010,"value":66.477},{"year":2011,"value":66.957},{"year":2012,"value":67.392},{"year":2013,"value":67.798},{"year":2014,"value":68.18},{"year":2015,"value":68.542},{"year":2016,"value":68.88},{"year":2017,"value":69.19},{"year":2018,"value":69.471},{"year":2019,"value":69.724}]},{"name":"Myanmar","displayName":"Myanmar","income":3,"start1960":42.487,"end2019":67.083,"values":[{"year":1960,"value":42.487},{"year":1961,"value":43.065},{"year":1962,"value":43.668},{"year":1963,"value":44.312},{"year":1964,"value":45.002},{"year":1965,"value":45.722},{"year":1966,"value":46.448},{"year":1967,"value":47.144},{"year":1968,"value":47.785},{"year":1969,"value":48.365},{"year":1970,"value":48.882},{"year":1971,"value":49.343},{"year":1972,"value":49.771},{"year":1973,"value":50.183},{"year":1974,"value":50.588},{"year":1975,"value":50.992},{"year":1976,"value":51.396},{"year":1977,"value":51.797},{"year":1978,"value":52.195},{"year":1979,"value":52.591},{"year":1980,"value":52.99},{"year":1981,"value":53.394},{"year":1982,"value":53.802},{"year":1983,"value":54.215},{"year":1984,"value":54.628},{"year":1985,"value":55.039},{"year":1986,"value":55.441},{"year":1987,"value":55.831},{"year":1988,"value":56.205},{"year":1989,"value":56.562},{"year":1990,"value":56.903},{"year":1991,"value":57.231},{"year":1992,"value":57.55},{"year":1993,"value":57.867},{"year":1994,"value":58.181},{"year":1995,"value":58.496},{"year":1996,"value":58.813},{"year":1997,"value":59.13},{"year":1998,"value":59.446},{"year":1999,"value":59.762},{"year":2000,"value":60.077},{"year":2001,"value":60.386},{"year":2002,"value":60.691},{"year":2003,"value":60.994},{"year":2004,"value":61.297},{"year":2005,"value":61.61},{"year":2006,"value":61.941},{"year":2007,"value":62.296},{"year":2008,"value":62.678},{"year":2009,"value":63.085},{"year":2010,"value":63.516},{"year":2011,"value":63.969},{"year":2012,"value":64.433},{"year":2013,"value":64.894},{"year":2014,"value":65.346},{"year":2015,"value":65.773},{"year":2016,"value":66.162},{"year":2017,"value":66.511},{"year":2018,"value":66.817},{"year":2019,"value":67.083}]},{"name":"Lao PDR","displayName":"Laos","income":3,"start1960":43.246,"end2019":67.944,"values":[{"year":1960,"value":43.246},{"year":1961,"value":43.548},{"year":1962,"value":43.849},{"year":1963,"value":44.149},{"year":1964,"value":44.448},{"year":1965,"value":44.748},{"year":1966,"value":45.05},{"year":1967,"value":45.354},{"year":1968,"value":45.662},{"year":1969,"value":45.971},{"year":1970,"value":46.281},{"year":1971,"value":46.585},{"year":1972,"value":46.881},{"year":1973,"value":47.169},{"year":1974,"value":47.45},{"year":1975,"value":47.721},{"year":1976,"value":47.983},{"year":1977,"value":48.239},{"year":1978,"value":48.498},{"year":1979,"value":48.766},{"year":1980,"value":49.055},{"year":1981,"value":49.38},{"year":1982,"value":49.747},{"year":1983,"value":50.156},{"year":1984,"value":50.603},{"year":1985,"value":51.077},{"year":1986,"value":51.559},{"year":1987,"value":52.034},{"year":1988,"value":52.492},{"year":1989,"value":52.932},{"year":1990,"value":53.364},{"year":1991,"value":53.802},{"year":1992,"value":54.264},{"year":1993,"value":54.76},{"year":1994,"value":55.293},{"year":1995,"value":55.859},{"year":1996,"value":56.45},{"year":1997,"value":57.048},{"year":1998,"value":57.644},{"year":1999,"value":58.231},{"year":2000,"value":58.808},{"year":2001,"value":59.376},{"year":2002,"value":59.94},{"year":2003,"value":60.504},{"year":2004,"value":61.066},{"year":2005,"value":61.625},{"year":2006,"value":62.18},{"year":2007,"value":62.727},{"year":2008,"value":63.265},{"year":2009,"value":63.788},{"year":2010,"value":64.296},{"year":2011,"value":64.785},{"year":2012,"value":65.257},{"year":2013,"value":65.709},{"year":2014,"value":66.14},{"year":2015,"value":66.548},{"year":2016,"value":66.931},{"year":2017,"value":67.291},{"year":2018,"value":67.627},{"year":2019,"value":67.944}]},{"name":"Zimbabwe","displayName":"Zimbabwe","income":3,"start1960":53.038,"end2019":61.349,"values":[{"year":1960,"value":53.038},{"year":1961,"value":53.502},{"year":1962,"value":53.966},{"year":1963,"value":54.424},{"year":1964,"value":54.87},{"year":1965,"value":55.296},{"year":1966,"value":55.692},{"year":1967,"value":56.056},{"year":1968,"value":56.383},{"year":1969,"value":56.677},{"year":1970,"value":56.934},{"year":1971,"value":57.155},{"year":1972,"value":57.349},{"year":1973,"value":57.528},{"year":1974,"value":57.705},{"year":1975,"value":57.909},{"year":1976,"value":58.165},{"year":1977,"value":58.483},{"year":1978,"value":58.861},{"year":1979,"value":59.284},{"year":1980,"value":59.741},{"year":1981,"value":60.215},{"year":1982,"value":60.665},{"year":1983,"value":61.046},{"year":1984,"value":61.309},{"year":1985,"value":61.397},{"year":1986,"value":61.255},{"year":1987,"value":60.867},{"year":1988,"value":60.23},{"year":1989,"value":59.35},{"year":1990,"value":58.235},{"year":1991,"value":56.901},{"year":1992,"value":55.409},{"year":1993,"value":53.829},{"year":1994,"value":52.225},{"year":1995,"value":50.659},{"year":1996,"value":49.181},{"year":1997,"value":47.82},{"year":1998,"value":46.611},{"year":1999,"value":45.588},{"year":2000,"value":44.757},{"year":2001,"value":44.099},{"year":2002,"value":43.594},{"year":2003,"value":43.251},{"year":2004,"value":43.106},{"year":2005,"value":43.267},{"year":2006,"value":43.864},{"year":2007,"value":44.94},{"year":2008,"value":46.475},{"year":2009,"value":48.396},{"year":2010,"value":50.561},{"year":2011,"value":52.794},{"year":2012,"value":54.909},{"year":2013,"value":56.759},{"year":2014,"value":58.262},{"year":2015,"value":59.381},{"year":2016,"value":60.142},{"year":2017,"value":60.662},{"year":2018,"value":61.049},{"year":2019,"value":61.349}]},{"name":"Rwanda","displayName":"Rwanda","income":3,"start1960":42.604,"end2019":68.977,"values":[{"year":1960,"value":42.604},{"year":1961,"value":42.928},{"year":1962,"value":43.238},{"year":1963,"value":43.526},{"year":1964,"value":43.79},{"year":1965,"value":44.02},{"year":1966,"value":44.213},{"year":1967,"value":44.369},{"year":1968,"value":44.495},{"year":1969,"value":44.6},{"year":1970,"value":44.69},{"year":1971,"value":44.767},{"year":1972,"value":44.845},{"year":1973,"value":44.943},{"year":1974,"value":45.083},{"year":1975,"value":45.315},{"year":1976,"value":45.691},{"year":1977,"value":46.224},{"year":1978,"value":46.893},{"year":1979,"value":47.659},{"year":1980,"value":48.523},{"year":1981,"value":49.493},{"year":1982,"value":50.482},{"year":1983,"value":51.337},{"year":1984,"value":51.883},{"year":1985,"value":51.682},{"year":1986,"value":50.233},{"year":1987,"value":47.415},{"year":1988,"value":43.374},{"year":1989,"value":38.46},{"year":1990,"value":33.441},{"year":1991,"value":29.28},{"year":1992,"value":26.724},{"year":1993,"value":26.203},{"year":1994,"value":27.762},{"year":1995,"value":31.051},{"year":1996,"value":35.383},{"year":1997,"value":39.831},{"year":1998,"value":43.671},{"year":1999,"value":46.617},{"year":2000,"value":48.623},{"year":2001,"value":49.909},{"year":2002,"value":50.959},{"year":2003,"value":52.148},{"year":2004,"value":53.565},{"year":2005,"value":55.222},{"year":2006,"value":57.049},{"year":2007,"value":58.879},{"year":2008,"value":60.573},{"year":2009,"value":62.088},{"year":2010,"value":63.391},{"year":2011,"value":64.479},{"year":2012,"value":65.392},{"year":2013,"value":66.173},{"year":2014,"value":66.838},{"year":2015,"value":67.403},{"year":2016,"value":67.882},{"year":2017,"value":68.292},{"year":2018,"value":68.651},{"year":2019,"value":68.977}]}];
+
+const YEARS = Array.from({length: 60}, (_, i) => 1960 + i); // 1960–2019
+
+// ─────────────────────────────────────────────────────────────────
+// SHARED UTILITIES
+// ─────────────────────────────────────────────────────────────────
+const tooltip = document.getElementById('tooltip');
+function showTip(html, event) {
+  tooltip.innerHTML = html;
+  tooltip.classList.add('visible');
+  moveTip(event);
+}
+function moveTip(event) {
+  const x = event.clientX + 14, y = event.clientY - 10;
+  tooltip.style.left = Math.min(x, window.innerWidth  - 240) + 'px';
+  tooltip.style.top  = Math.min(y, window.innerHeight - 100) + 'px';
+}
+function hideTip() { tooltip.classList.remove('visible'); }
+
+// ─────────────────────────────────────────────────────────────────
+// SETUP — assign quartiles by 1960 life expectancy
+// bottom quartile = lowest 1960 = historically worst off
+// top quartile    = highest 1960 = already developed
+// ─────────────────────────────────────────────────────────────────
+const countries = COUNTRIES_RAW;
+const sorted = [...countries].sort((a, b) => a.start1960 - b.start1960);
+const N = sorted.length;
+sorted.forEach((c, i) => {
+  c.quartile = i < N / 4 ? 'bottom' : i >= 3 * N / 4 ? 'top' : 'middle';
+});
+
+// Helper: average a field across a group at a given year
+function groupAvg(group) {
+  return YEARS.map(yr => {
+    const vals = group.map(c => { const pt = c.values.find(v => v.year === yr); return pt ? pt.value : null; })
+                      .filter(v => v !== null);
+    return { year: yr, value: vals.length ? d3.mean(vals) : null };
+  });
+}
+
+// 5-year rolling average rate (smooths year-to-year noise)
+function rollingRate(series, window = 5) {
+  const out = [];
+  for (let i = 0; i < series.length; i++) {
+    if (i < window - 1) { out.push({ year: series[i].year, value: null }); continue; }
+    const cur  = series[i].value;
+    const prev = series[i - (window - 1)].value;
+    if (cur == null || prev == null) { out.push({ year: series[i].year, value: null }); continue; }
+    out.push({ year: series[i].year, value: (cur - prev) / (window - 1) });
+  }
+  return out.filter(d => d.value !== null);
+}
+
+function computeGap(hiSeries, loSeries) {
+  return hiSeries.map((d, i) => ({
+    year: d.year,
+    value: (d.value != null && loSeries[i].value != null) ? d.value - loSeries[i].value : null
+  }));
+}
+
+let v1CurrentGroup = 'all';
+let v2CurrentMode  = 'rate';
+
+// ─────────────────────────────────────────────────────────────────
+// VIS 1 — RISING FLOOR
+// ─────────────────────────────────────────────────────────────────
+function drawVis1() {
+  const container = document.getElementById('chart1');
+  container.innerHTML = '';
+  const W = container.clientWidth || 800;
+  const H = 420;
+  const m = { top: 24, right: 148, bottom: 44, left: 52 };
+  const iw = W - m.left - m.right, ih = H - m.top - m.bottom;
+
+  const svg = d3.select(container).append('svg')
+    .attr('viewBox', `0 0 ${W} ${H}`).attr('preserveAspectRatio', 'xMidYMid meet');
+  const g = svg.append('g').attr('transform', `translate(${m.left},${m.top})`);
+
+  const xSc = d3.scaleLinear().domain([1960, 2019]).range([0, iw]);
+  // Y-axis from 25 — standard for life expectancy, amplifies slope visually
+  const ySc = d3.scaleLinear().domain([25, 90]).range([ih, 0]);
+
+  // Convergence zone post-1990
+  g.append('rect')
+    .attr('x', xSc(1990)).attr('y', 0)
+    .attr('width', xSc(2019) - xSc(1990)).attr('height', ih)
+    .attr('fill', 'rgba(30,122,110,0.045)')
+    .attr('stroke', 'rgba(30,122,110,0.14)').attr('stroke-width', 1).attr('stroke-dasharray', '4,3');
+  g.append('text')
+    .attr('x', xSc(2004)).attr('y', 13).attr('text-anchor', 'middle')
+    .attr('font-size', '9px').attr('fill', 'rgba(30,122,110,0.65)')
+    .attr('font-family', "'DM Mono',monospace").text('↓ convergence accelerates');
+
+  // Grid lines
+  g.append('g').call(d3.axisLeft(ySc).ticks(7).tickSize(-iw).tickFormat(''))
+    .select('.domain').remove();
+  g.selectAll('.grid line').attr('stroke', '#F0EBE4').attr('stroke-width', 1);
+
+  const lineFn = d3.line().defined(d => d.value !== null)
+    .x(d => xSc(d.year)).y(d => ySc(d.value))
+    .curve(d3.curveCatmullRom.alpha(0.5));
+
+  // Draw in z-order: top/middle first, then bottom on top
+  ['top', 'middle', 'bottom'].forEach(q => {
+    countries.filter(c => c.quartile === q).forEach(c => {
+      const isBot = c.quartile === 'bottom';
+      const isTop = c.quartile === 'top';
+      let opacity, stroke, strokeW;
+
+      if (v1CurrentGroup === 'all') {
+        opacity = isBot ? 0.88 : isTop ? 0.22 : 0.15;
+        stroke  = isBot ? '#1E7A6E' : isTop ? '#C0C0C0' : '#C8B89A';
+        strokeW = isBot ? 2.2 : 1;
+      } else if (v1CurrentGroup === 'bottom') {
+        opacity = isBot ? 0.92 : 0.04;
+        stroke  = isBot ? '#1E7A6E' : '#E0E0E0';
+        strokeW = isBot ? 2.5 : 0.8;
+      } else {
+        opacity = isTop ? 0.92 : 0.04;
+        stroke  = isTop ? '#999' : '#E0E0E0';
+        strokeW = isTop ? 2.5 : 0.8;
+      }
+
+      const path = g.append('path').datum(c.values)
+        .attr('fill', 'none').attr('stroke', stroke)
+        .attr('stroke-width', strokeW).attr('opacity', opacity)
+        .attr('d', lineFn).style('cursor', 'pointer');
+
+      const len = path.node().getTotalLength();
+      path.attr('stroke-dasharray', len).attr('stroke-dashoffset', len)
+        .transition().duration(900).delay(Math.random() * 250).attr('stroke-dashoffset', 0);
+
+      path.on('mouseover', function(event) {
+        d3.select(this).attr('stroke-width', strokeW + 1.5).attr('opacity', 1);
+        const first = c.values.find(v => v.value !== null);
+        const last  = [...c.values].reverse().find(v => v.value !== null);
+        showTip(
+          `<strong>${c.displayName}</strong><br>` +
+          `1960: ${first.value.toFixed(1)} yrs<br>` +
+          `2019: ${last.value.toFixed(1)} yrs<br>` +
+          `Gain: +${(last.value - first.value).toFixed(1)} yrs`, event);
+      })
+      .on('mousemove', moveTip)
+      .on('mouseout', function() {
+        d3.select(this).attr('stroke-width', strokeW).attr('opacity', opacity); hideTip();
+      });
+
+      // Label notable bottom-quartile improvers
+      if (isBot && v1CurrentGroup !== 'top') {
+        const gain = c.end2019 - c.start1960;
+        if (gain > 28) {
+          const last = [...c.values].reverse().find(v => v.value !== null);
+          g.append('text')
+            .attr('x', xSc(2019) + 5).attr('y', ySc(last.value))
+            .attr('dy', '0.35em').attr('font-size', '9px').attr('fill', '#1E7A6E')
+            .attr('font-family', "'DM Sans',sans-serif").text(c.displayName);
+        }
+      }
+    });
+  });
+
+  // Axes
+  g.append('g').attr('transform', `translate(0,${ih})`)
+    .call(d3.axisBottom(xSc).tickFormat(d3.format('d')).ticks(8))
+    .select('.domain').attr('stroke', '#DDD');
+  g.append('g').call(d3.axisLeft(ySc).ticks(7)).select('.domain').attr('stroke', '#DDD');
+  g.selectAll('.tick text').attr('font-size', '11px').attr('fill', '#7A6E62');
+  g.selectAll('.tick line').attr('stroke', '#DDD');
+  g.append('text').attr('x', iw / 2).attr('y', ih + 38)
+    .attr('text-anchor', 'middle').attr('font-size', '11px').attr('fill', '#7A6E62').text('Year');
+  g.append('text').attr('transform', 'rotate(-90)').attr('x', -ih / 2).attr('y', -42)
+    .attr('text-anchor', 'middle').attr('font-size', '11px').attr('fill', '#7A6E62')
+    .text('Life Expectancy at Birth (years)');
+
+  if (v1CurrentGroup !== 'top') {
+    g.append('text').attr('x', xSc(1961)).attr('y', ySc(31.5))
+      .attr('font-size', '10px').attr('fill', '#1E7A6E')
+      .attr('font-family', "'DM Mono',monospace")
+      .text('← historically lowest (1960)');
+  }
+}
+
+function setV1Group(group, btn) {
+  v1CurrentGroup = group;
+  document.querySelectorAll('#vis1 .ctrl-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  drawVis1();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// VIS 2 — STAGNATING CEILING
+// ─────────────────────────────────────────────────────────────────
+function drawVis2() {
+  const container = document.getElementById('chart2');
+  container.innerHTML = '';
+  const W = container.clientWidth || 800;
+  const H = 420;
+  const m = { top: 30, right: 114, bottom: 44, left: 56 };
+  const iw = W - m.left - m.right, ih = H - m.top - m.bottom;
+
+  const svg = d3.select(container).append('svg')
+    .attr('viewBox', `0 0 ${W} ${H}`).attr('preserveAspectRatio', 'xMidYMid meet');
+  const g = svg.append('g').attr('transform', `translate(${m.left},${m.top})`);
+
+  const hiGroup = countries.filter(c => c.income === 1);
+  const loGroup = countries.filter(c => c.income === 3);
+  const hiAvg   = groupAvg(hiGroup);
+  const loAvg   = groupAvg(loGroup);
+
+  let topData, cmpData, yDomain, yLabel, xStart;
+
+  if (v2CurrentMode === 'rate') {
+    topData  = rollingRate(hiAvg, 5);
+    cmpData  = rollingRate(loAvg, 5);
+    yDomain  = [0, 0.72];
+    yLabel   = '5-yr avg annual gain in life expectancy (years/year)';
+    xStart   = 1964; // first valid year for 5yr rolling
+  } else if (v2CurrentMode === 'level') {
+    topData  = hiAvg; cmpData = loAvg;
+    yDomain  = [25, 90];
+    yLabel   = 'Life expectancy at birth (years)';
+    xStart   = 1960;
+  } else {
+    topData  = computeGap(hiAvg, loAvg); cmpData = null;
+    yDomain  = [0, 35];
+    yLabel   = 'Gap: high-income minus low-income average (years)';
+    xStart   = 1960;
+  }
+
+  const xSc = d3.scaleLinear().domain([xStart, 2019]).range([0, iw]);
+  const ySc = d3.scaleLinear().domain(yDomain).range([ih, 0]).nice();
+
+  // Grid
+  g.append('g').call(d3.axisLeft(ySc).ticks(5).tickSize(-iw).tickFormat(''))
+    .select('.domain').remove();
+  g.selectAll('.grid line').attr('stroke', '#F5EEE8').attr('stroke-width', 1);
+
+  const areaFn = d3.area().defined(d => d.value != null)
+    .x(d => xSc(d.year)).y0(ih).y1(d => ySc(d.value))
+    .curve(d3.curveCatmullRom.alpha(0.5));
+  const lineFn = d3.line().defined(d => d.value != null)
+    .x(d => xSc(d.year)).y(d => ySc(d.value))
+    .curve(d3.curveCatmullRom.alpha(0.5));
+
+  if (v2CurrentMode === 'gap') {
+    g.append('path').datum(topData).attr('fill', 'rgba(184,75,46,0.10)').attr('d', areaFn);
+    g.append('path').datum(topData).attr('fill', 'none')
+      .attr('stroke', '#B84B2E').attr('stroke-width', 2.5).attr('d', lineFn);
+
+    // Annotate the stubborn gap
+    const y1990 = topData.find(d => d.year === 1990);
+    if (y1990) {
+      g.append('text').attr('x', xSc(1990)).attr('y', ySc(y1990.value) - 14)
+        .attr('text-anchor', 'middle').attr('font-size', '9px').attr('fill', '#B84B2E')
+        .attr('font-family', "'DM Mono',monospace").text('gap barely moves 1960–2000');
+      g.append('line')
+        .attr('x1', xSc(1960)).attr('x2', xSc(2000))
+        .attr('y1', ySc(y1990.value) - 6).attr('y2', ySc(y1990.value) - 6)
+        .attr('stroke', '#B84B2E').attr('stroke-dasharray', '3,3').attr('opacity', 0.45);
+    }
+    const lastPt = [...topData].reverse().find(d => d.value != null);
+    g.append('text').attr('x', xSc(2019) + 4).attr('y', ySc(lastPt.value))
+      .attr('dy', '0.35em').attr('font-size', '10px').attr('fill', '#B84B2E').text('Still 17.7 yrs');
+
+  } else {
+    // Faint individual high-income lines
+    hiGroup.forEach(c => {
+      const d2 = v2CurrentMode === 'rate' ? rollingRate(c.values, 5) : c.values;
+      g.append('path').datum(d2).attr('fill', 'none')
+        .attr('stroke', '#B84B2E').attr('stroke-width', 0.7).attr('opacity', 0.15).attr('d', lineFn);
+    });
+
+    // Low-income comparison (dashed)
+    if (cmpData) {
+      g.append('path').datum(cmpData).attr('fill', 'none')
+        .attr('stroke', '#F2C0B0').attr('stroke-width', 1.8)
+        .attr('stroke-dasharray', '5,3').attr('d', lineFn);
+    }
+
+    // Bold high-income average
+    g.append('path').datum(topData).attr('fill', 'none')
+      .attr('stroke', '#B84B2E').attr('stroke-width', 2.5).attr('d', lineFn);
+
+    if (v2CurrentMode === 'rate') {
+      // Mark the 2010s dip — lowest rate since 1960s
+      const last5 = topData.filter(d => d.year >= 2015);
+      if (last5.length) {
+        const avg2015 = d3.mean(last5, d => d.value);
+        g.append('text').attr('x', xSc(2012)).attr('y', ySc(avg2015) - 10)
+          .attr('text-anchor', 'middle').attr('font-size', '9px').attr('fill', '#B84B2E')
+          .attr('font-family', "'DM Mono',monospace").text('2010s: lowest rate since 1960s');
+      }
+      g.append('text').attr('x', xSc(1976)).attr('y', ySc(0.54))
+        .attr('font-size', '9px').attr('fill', '#B84B2E')
+        .attr('font-family', "'DM Mono',monospace").text('peak improvement era →');
+    } else {
+      // Level view: biological ceiling annotation
+      g.append('line')
+        .attr('x1', 0).attr('x2', iw).attr('y1', ySc(85)).attr('y2', ySc(85))
+        .attr('stroke', '#B84B2E').attr('stroke-width', 1).attr('stroke-dasharray', '4,3').attr('opacity', 0.4);
+      g.append('text').attr('x', 6).attr('y', ySc(85) - 5)
+        .attr('font-size', '9px').attr('fill', '#B84B2E')
+        .attr('font-family', "'DM Mono',monospace").text('approaching ceiling (~85 yrs)');
+    }
+
+    const lastHi = [...topData].reverse().find(d => d.value != null);
+    g.append('text').attr('x', xSc(2019) + 4).attr('y', ySc(lastHi.value))
+      .attr('dy', '0.35em').attr('font-size', '10px').attr('fill', '#B84B2E').text('High-income avg');
+    if (cmpData) {
+      const lastLo = [...cmpData].reverse().find(d => d.value != null);
+      g.append('text').attr('x', xSc(2019) + 4).attr('y', ySc(lastLo.value))
+        .attr('dy', '0.35em').attr('font-size', '10px').attr('fill', '#D4907A').text('Low-income avg');
+    }
+  }
+
+  // Hover crosshair
+  const bisect = d3.bisector(d => d.year).left;
+  const hoverLine = g.append('line').attr('y1', 0).attr('y2', ih)
+    .attr('stroke', '#999').attr('stroke-width', 1).attr('stroke-dasharray', '3,2').attr('opacity', 0);
+  g.append('rect').attr('width', iw).attr('height', ih).attr('fill', 'none').attr('pointer-events', 'all')
+    .on('mousemove', function(event) {
+      const [mx] = d3.pointer(event);
+      const yr = xSc.invert(mx);
+      hoverLine.attr('x1', mx).attr('x2', mx).attr('opacity', 0.5);
+      const i = Math.min(bisect(topData, yr, 1), topData.length - 1);
+      const d = topData[i];
+      if (!d || d.value == null) return;
+      let html = `<strong>${Math.round(d.year)}</strong>`;
+      if (v2CurrentMode === 'rate')       html += `<br>High-income gain: +${d.value.toFixed(3)} yrs/yr`;
+      else if (v2CurrentMode === 'level') html += `<br>High-income avg: ${d.value.toFixed(1)} yrs`;
+      else                                html += `<br>Gap (hi − lo): ${d.value.toFixed(1)} yrs`;
+      if (cmpData) {
+        const j = Math.min(bisect(cmpData, yr, 1), cmpData.length - 1);
+        const cd = cmpData[j];
+        if (cd && cd.value != null) html += v2CurrentMode === 'rate'
+          ? `<br>Low-income gain: +${cd.value.toFixed(3)} yrs/yr`
+          : `<br>Low-income avg: ${cd.value.toFixed(1)} yrs`;
+      }
+      showTip(html, event);
+    })
+    .on('mouseleave', () => { hoverLine.attr('opacity', 0); hideTip(); });
+
+  // Axes
+  g.append('g').attr('transform', `translate(0,${ih})`)
+    .call(d3.axisBottom(xSc).tickFormat(d3.format('d')).ticks(7))
+    .select('.domain').attr('stroke', '#DDD');
+  g.append('g').call(d3.axisLeft(ySc).ticks(5)).select('.domain').attr('stroke', '#DDD');
+  g.selectAll('.tick text').attr('font-size', '11px').attr('fill', '#7A6E62');
+  g.selectAll('.tick line').attr('stroke', '#DDD');
+  g.append('text').attr('x', iw / 2).attr('y', ih + 38)
+    .attr('text-anchor', 'middle').attr('font-size', '11px').attr('fill', '#7A6E62').text('Year');
+  g.append('text').attr('transform', 'rotate(-90)').attr('x', -ih / 2).attr('y', -46)
+    .attr('text-anchor', 'middle').attr('font-size', '10px').attr('fill', '#7A6E62').text(yLabel);
+}
+
+function setV2Mode(mode, btn) {
+  v2CurrentMode = mode;
+  document.querySelectorAll('#vis2 .ctrl-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  drawVis2();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// INIT & RESIZE
+// ─────────────────────────────────────────────────────────────────
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => { drawVis1(); drawVis2(); }, 150);
+});
+
+function init() { drawVis1(); drawVis2(); }
+document.addEventListener('DOMContentLoaded', init);
+if (document.readyState !== 'loading') init();
+</script>
+</body>
+</html>
